@@ -16,14 +16,22 @@ import static org.openhab.binding.octoprint.internal.OctoPrintBindingConstants.*
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.jetty.client.HttpClient;
+import org.eclipse.jetty.client.api.ContentResponse;
+import org.eclipse.jetty.client.api.Request;
+import org.eclipse.jetty.client.util.StringContentProvider;
+import org.eclipse.jetty.http.HttpMethod;
+import org.eclipse.jetty.http.HttpStatus;
+import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
-import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.types.Command;
-import org.openhab.core.types.RefreshType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.gson.*;
+
 /**
  * The {@link OctoPrintHandler} is responsible for handling commands, which are
  * sent to one of the channels.
@@ -33,8 +41,18 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class OctoPrintHandler extends BaseThingHandler {
 
+    public enum JobState {
+        IDLE,
+        STARTED,
+        PAUSED,
+        RUNNING,
+        CANCELED
+    }
+
+    private JobState jobState = JobState.IDLE;
     private final Logger logger = LoggerFactory.getLogger(OctoPrintHandler.class);
 
+    private HttpRequestService httpRequestService;
     private @Nullable OctoPrintConfiguration config;
 
     public OctoPrintHandler(Thing thing) {
@@ -43,16 +61,44 @@ public class OctoPrintHandler extends BaseThingHandler {
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-        switch (channelUID.getId()) {
-            case PRINT_JOB_STATE:
-            case PRINT_JOB_FILE_NAME:
-            case PRINT_JOB_FILE_ORIGIN:
-                if (command instanceof RefreshType) {
-                    updateStates();
-                }
-                break;
-            default:
-                logger.warn("Framework sent command to unknown channel with id '{}'", channelUID.getId());
+        String channelId = channelUID.getId();
+        try {
+            switch (channelId) {
+                case PRINT_JOB_START:
+                    if (command instanceof StringType) {
+                        httpRequestService.postRequest("/api/job",)
+                        jobState = JobState.STARTED;
+                    }
+                    break;
+                case PRINT_JOB_CANCEL:
+                    if (command instanceof StringType) {
+                        // binding specific logic goes here
+                        jobState = JobState.CANCELED;
+                    }
+                    break;
+                case PRINT_JOB_PAUSE:
+                    if (command instanceof StringType) {
+                        // binding specific logic goes here
+                        jobState = jobState.PAUSED;
+                    }
+                    break;
+                case PRINT_JOB_RESTART:
+                    if (command instanceof StringType) {
+                        // binding specific logic goes here
+                        jobState = jobState.RUNNING;
+                    }
+                    break;
+                case PRINTER_HOMING:
+                    if (command instanceof StringType) {
+                        String jsonString = "{ \"command\": \"home\", \"axes\": [\"x\", \"y\", \"z\"] }";
+                        httpRequestService.postRequest();
+                    }
+                    break;
+                default:
+                    logger.warn("Framework sent command to unknown channel with id '{}'", channelUID.getId());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -63,6 +109,8 @@ public class OctoPrintHandler extends BaseThingHandler {
     @Override
     public void initialize() {
         config = getConfigAs(OctoPrintConfiguration.class);
+
+        httpRequestService = new HttpRequestService(octopiServer);
 
         // TODO: Initialize the handler.
         // The framework requires you to return from this method quickly, i.e. any network access must be done in
