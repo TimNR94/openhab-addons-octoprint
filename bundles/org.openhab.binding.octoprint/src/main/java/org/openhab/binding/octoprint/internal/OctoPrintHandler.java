@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.octoprint.internal.models.OctopiServer;
+import org.openhab.binding.octoprint.internal.services.HttpRequestService;
 import org.openhab.binding.octoprint.internal.services.PollRequestService;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.ChannelUID;
@@ -27,7 +28,6 @@ import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.types.Command;
-import org.openhab.core.types.RefreshType;
 import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +55,7 @@ public class OctoPrintHandler extends BaseThingHandler {
     private @Nullable OctopiServer octopiServer;
     private @Nullable ScheduledFuture<?> pollingJob;
 
-    private HttpRequestService httpRequestService;
+    private @Nullable HttpRequestService httpRequestService;
     private @Nullable OctoPrintConfiguration config;
 
     public OctoPrintHandler(Thing thing) {
@@ -65,7 +65,6 @@ public class OctoPrintHandler extends BaseThingHandler {
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
         String channelId = channelUID.getId();
-
         switch (channelId) {
             case PRINT_JOB_START:
                 if (command instanceof StringType) {
@@ -139,10 +138,11 @@ public class OctoPrintHandler extends BaseThingHandler {
 
     @Override
     public void initialize() {
+        // ToDo: Error Handling for everything
         config = getConfigAs(OctoPrintConfiguration.class);
         assert config != null;
 
-        octopiServer = new OctopiServer(config.ip, config.apikey, config.username);
+        octopiServer = new OctopiServer(config.ip, config.apiKey, config.username);
         logger.warn("Created {}", octopiServer);
         pollRequestService = new PollRequestService(octopiServer, this);
         pollRequestService.addPollRequest(SERVER_VERSION, "api/server", "version", new StringType());
@@ -199,6 +199,11 @@ public class OctoPrintHandler extends BaseThingHandler {
         if (pollRequestService != null) {
             pollRequestService.dispose();
             pollRequestService = null;
+        }
+
+        if (httpRequestService != null) {
+            httpRequestService.dispose();
+            httpRequestService = null;
         }
     }
 }
