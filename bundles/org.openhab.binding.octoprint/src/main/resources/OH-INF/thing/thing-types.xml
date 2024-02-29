@@ -181,7 +181,7 @@
 
 	<channel-type id="printJobRestart">
 		<item-type>String</item-type>
-		<label>Start Print Job</label>
+		<label>Restart Print Job</label>
 		<description>Start the print job of the selected file</description>
 		<state>
 			<options>
@@ -232,7 +232,7 @@
 	</channel-type>
 
 	<channel-type id="printerHoming">
-		<item-type>Switch</item-type>
+		<item-type>String</item-type>
 		<label>Homing Printer</label>
 		<description>Homing of the printer</description>
 		<state>
