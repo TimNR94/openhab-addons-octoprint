@@ -19,9 +19,11 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.jetty.client.api.Response;
 import org.openhab.binding.octoprint.internal.models.OctopiServer;
 import org.openhab.binding.octoprint.internal.services.HttpRequestService;
 import org.openhab.binding.octoprint.internal.services.PollRequestService;
+import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
@@ -40,21 +42,11 @@ import org.slf4j.LoggerFactory;
  */
 @NonNullByDefault
 public class OctoPrintHandler extends BaseThingHandler {
-
-    public enum JobState {
-        IDLE,
-        STARTED,
-        PAUSED,
-        RUNNING,
-        CANCELED
-    }
-
-    private JobState jobState = JobState.IDLE;
     private final Logger logger = LoggerFactory.getLogger(OctoPrintHandler.class);
     private @Nullable PollRequestService pollRequestService;
     private @Nullable OctopiServer octopiServer;
     private @Nullable ScheduledFuture<?> pollingJob;
-
+    private String selectedTool = "0";
     private @Nullable HttpRequestService httpRequestService;
     private @Nullable OctoPrintConfiguration config;
 
@@ -69,56 +61,212 @@ public class OctoPrintHandler extends BaseThingHandler {
             case PRINT_JOB_START:
                 if (command instanceof StringType) {
                     String body = "{ \"command\": \"start\" }";
-                    httpRequestService.postRequest("api/job", body);
-                    jobState = JobState.STARTED;
+                    Response res = httpRequestService.postRequest("api/job", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - There is already a running print job.", res.getStatus(),
+                                res);
+                    }
                 }
                 break;
             case PRINT_JOB_CANCEL:
                 if (command instanceof StringType) {
                     String body = "{ \"command\": \"cancel\" }";
-                    httpRequestService.postRequest("api/job", body);
-                    jobState = JobState.CANCELED;
+                    Response res = httpRequestService.postRequest("api/job", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - There is no running print job to cancel.", res.getStatus(),
+                                res);
+                    }
                 }
                 break;
             case PRINT_JOB_PAUSE:
                 if (command instanceof StringType) {
                     String body = "{ \"command\": \"pause\", \"action\": \"pause\" }";
-                    httpRequestService.postRequest("api/job", body);
-                    jobState = JobState.PAUSED;
+                    Response res = httpRequestService.postRequest("api/job", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - There is no print job to pause/resume/toggle.",
+                                res.getStatus(), res);
+                    }
                 }
                 break;
             case PRINT_JOB_RESTART:
                 if (command instanceof StringType) {
                     String body = "{ \"command\": \"pause\", \"action\": \"resume\" }";
-                    httpRequestService.postRequest("api/job", body);
-                    jobState = JobState.RUNNING;
+                    Response res = httpRequestService.postRequest("api/job", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - There is no active print job that is currently paused.",
+                                res.getStatus(), res);
+                    }
                 }
                 break;
-            case PRINTER_HOMING_XYZ:
-                if (command instanceof StringType) {
-                    String body = "{ \"command\": \"home\", \"axes\": [\"x\", \"y\", \"z\"] }";
-                    httpRequestService.postRequest("api/printer/printhead", body);
+            case PRINTER_JOG_X:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"jog\", \"x\": %s, \"y\": 0, \"z\": 0 }", command);
+                    Response res = httpRequestService.postRequest("api/printer/printhead", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational or is printing.",
+                                res.getStatus(), res);
+                    }
+                }
+                break;
+            case PRINTER_JOG_Y:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"jog\", \"x\": 0, \"y\": %s, \"z\": 0 }", command);
+                    Response res = httpRequestService.postRequest("api/printer/printhead", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational or is printing.",
+                                res.getStatus(), res);
+                    }
+                }
+                break;
+            case PRINTER_JOG_Z:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"jog\", \"x\": 0, \"y\": 0, \"z\": %s }", command);
+                    Response res = httpRequestService.postRequest("api/printer/printhead", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational or is printing.",
+                                res.getStatus(), res);
+                    }
                 }
                 break;
             case PRINTER_HOMING_X:
                 if (command instanceof StringType) {
                     String body = "{ \"command\": \"home\", \"axes\": [\"x\"] }";
-                    httpRequestService.postRequest("api/printer/printhead", body);
+                    Response res = httpRequestService.postRequest("api/printer/printhead", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational or is printing.",
+                                res.getStatus(), res);
+                    }
                 }
                 break;
             case PRINTER_HOMING_Y:
                 if (command instanceof StringType) {
                     String body = "{ \"command\": \"home\", \"axes\": [\"y\"] }";
-                    httpRequestService.postRequest("api/printer/printhead", body);
+                    Response res = httpRequestService.postRequest("api/printer/printhead", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational or is printing.",
+                                res.getStatus(), res);
+                    }
                 }
                 break;
             case PRINTER_HOMING_Z:
                 if (command instanceof StringType) {
                     String body = "{ \"command\": \"home\", \"axes\": [\"z\"] }";
-                    httpRequestService.postRequest("api/printer/printhead", body);
+                    Response res = httpRequestService.postRequest("api/printer/printhead", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational or is printing.",
+                                res.getStatus(), res);
+                    }
                 }
                 break;
+            case PRINTER_HOMING_XYZ:
+                if (command instanceof StringType) {
+                    String body = "{ \"command\": \"home\", \"axes\": [\"x\", \"y\", \"z\"] }";
+                    Response res = httpRequestService.postRequest("api/printer/printhead", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational or is printing.",
+                                res.getStatus(), res);
+                    }
+                    System.out.printf("PRINTER HOMING XYZ: %s%n", res);
+                }
+                break;
+            case PRINTER_TOOL_SELECT:
+                System.out.println("RPINTER TOOL SELECT - DEBUG");
+                if (command instanceof DecimalType) {
+                    selectedTool = command.toString();
+                    String body = String.format("{ \"command\": \"select\", \"tool\": \"tool%s\"}", selectedTool);
+                    Response res = httpRequestService.postRequest("api/printer/tool", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational or is printing.",
+                                res.getStatus(), res);
+                    }
+                    System.out.printf("PRINTER TOOL SELECT: %s%n", res);
 
+                }
+                break;
+            case PRINTER_TOOL_FLOWRATE:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"flowrate\", \"factor\": %d}",
+                            Integer.parseInt(command.toString()));
+                    Response res = httpRequestService.postRequest("api/printer/tool", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational.", res.getStatus(),
+                                res);
+                    }
+                    System.out.printf("PRINTER TOOL FLOWRATE: %s%n", res);
+                }
+                break;
+            case PRINTER_TOOL_TEMP_TARGET:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"target\", \"tools\": {\"tool%s\": %d} }",
+                            selectedTool, Integer.parseInt(command.toString()));
+                    Response res = httpRequestService.postRequest("api/printer/tool", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational.", res.getStatus(),
+                                res);
+                    }
+                    System.out.printf("PRINTER TOOL TEMP TARGET: %s%n", res);
+                }
+                break;
+            case PRINTER_TOOL_TEMP_OFFSET:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"offset\", \"tools\": {\"tool%s\": %d} }",
+                            selectedTool, Integer.parseInt(command.toString()));
+                    Response res = httpRequestService.postRequest("api/printer/tool", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational.", res.getStatus(),
+                                res);
+                    }
+                    System.out.printf("PRINTER TOOL TEMP OFFSET: %s%n", res);
+                }
+                break;
+            case PRINTER_BED_TEMP_TARGET:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"target\", \"target\": %d }",
+                            Integer.parseInt(command.toString()));
+                    Response res = httpRequestService.postRequest("api/printer/bed", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational.", res.getStatus(),
+                                res);
+                    }
+                    System.out.printf("PRINTER BED TEMP TARGET: %s%n", res);
+                }
+                break;
+            case PRINTER_BED_TEMP_OFFSET:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"offset\", \"offset\": %d }",
+                            Integer.parseInt(command.toString()));
+                    Response res = httpRequestService.postRequest("api/printer/bed", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational.", res.getStatus(),
+                                res);
+                    }
+                    System.out.printf("PRINTER BED TEMP OFFSET: %s%n", res);
+                }
+                break;
+            case PRINTER_CHAMBER_TEMP_TARGET:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"target\", \"target\": %d} }",
+                            Integer.parseInt(command.toString()));
+                    Response res = httpRequestService.postRequest("api/printer/chamber", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational.", res.getStatus(),
+                                res);
+                    }
+                    System.out.printf("PRINTER CHAMBER TEMP TARGET: %s%n", res);
+                }
+                break;
+            case PRINTER_CHAMBER_TEMP_OFFSET:
+                if (command instanceof DecimalType) {
+                    String body = String.format("{ \"command\": \"offset\", \"offset\": %d} }",
+                            Integer.parseInt(command.toString()));
+                    Response res = httpRequestService.postRequest("api/printer/chamber", body);
+                    if (res.getStatus() == 409) {
+                        logger.warn("status: {}, body: {} - Printer is currently not operational.", res.getStatus(),
+                                res);
+                    }
+                    System.out.printf("PRINTER CHAMBER TEMP OFFSET: %s%n", res.toString());
+                }
+                break;
             default:
                 logger.warn("Framework sent command to unknown channel with id '{}'", channelUID.getId());
         }
@@ -126,10 +274,6 @@ public class OctoPrintHandler extends BaseThingHandler {
 
     public void updateChannel(String channelUID, State state) {
         updateState(channelUID, state);
-    }
-
-    private void updateStates() {
-        logger.trace("updating states of {}", getThing().getUID());
     }
 
     private void pollingCode() {
