@@ -47,7 +47,10 @@ public class OctoPrintBindingConstants {
     public static final String PRINT_JOB_CURRENT_PRINT_TIME = "print_job_current_print_time";
     public static final String PRINT_JOB_ESTIMATED_PRINT_TIME_LEFT = "print_job_estimated_print_time_left";
     public static final String PRINTER_STATE = "printer_state";
-    public static final String PRINTER_HOMING = "printer_homing";
+    public static final String PRINTER_HOMING_X = "printer_homing_x";
+    public static final String PRINTER_HOMING_Y = "printer_homing_y";
+    public static final String PRINTER_HOMING_Z = "printer_homing_z";
+    public static final String PRINTER_HOMING_XYZ = "printer_homing_xyz";
     public static final String PRINTER_TOOL_TEMP_ACTUAL = "printer_tool_temp_actual";
     public static final String PRINTER_TOOL_TEMP_TARGET = "printer_tool_temp_target";
     public static final String PRINTER_BED_TEMP_ACTUAL = "printer_bed_temp_actual";

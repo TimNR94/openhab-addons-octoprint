@@ -36,7 +36,7 @@
 			<channel id="printer_homing_x" typeId="printerHomingX"/>
 			<channel id="printer_homing_y" typeId="printerHomingY"/>
 			<channel id="printer_homing_z" typeId="printerHomingZ"/>
-			<channel id="printer_homing" typeId="printerHoming"/>
+			<channel id="printer_homing_xyz" typeId="printerHomingXYZ"/>
 			<channel id="printer_tool_temp_actual" typeId="printerToolTempActual"/>
 			<channel id="printer_tool_temp_target" typeId="printerToolTempTarget"/>
 			<channel id="printer_bed_temp_actual" typeId="printerBedTempActual"/>

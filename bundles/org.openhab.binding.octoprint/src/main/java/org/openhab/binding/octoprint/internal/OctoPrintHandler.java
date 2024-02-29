@@ -16,12 +16,6 @@ import static org.openhab.binding.octoprint.internal.OctoPrintBindingConstants.*
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.client.api.ContentResponse;
-import org.eclipse.jetty.client.api.Request;
-import org.eclipse.jetty.client.util.StringContentProvider;
-import org.eclipse.jetty.http.HttpMethod;
-import org.eclipse.jetty.http.HttpStatus;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
@@ -62,43 +56,63 @@ public class OctoPrintHandler extends BaseThingHandler {
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
         String channelId = channelUID.getId();
-        try {
-            switch (channelId) {
-                case PRINT_JOB_START:
-                    if (command instanceof StringType) {
-                        httpRequestService.postRequest("/api/job",)
-                        jobState = JobState.STARTED;
-                    }
-                    break;
-                case PRINT_JOB_CANCEL:
-                    if (command instanceof StringType) {
-                        // binding specific logic goes here
-                        jobState = JobState.CANCELED;
-                    }
-                    break;
-                case PRINT_JOB_PAUSE:
-                    if (command instanceof StringType) {
-                        // binding specific logic goes here
-                        jobState = jobState.PAUSED;
-                    }
-                    break;
-                case PRINT_JOB_RESTART:
-                    if (command instanceof StringType) {
-                        // binding specific logic goes here
-                        jobState = jobState.RUNNING;
-                    }
-                    break;
-                case PRINTER_HOMING:
-                    if (command instanceof StringType) {
-                        String jsonString = "{ \"command\": \"home\", \"axes\": [\"x\", \"y\", \"z\"] }";
-                        httpRequestService.postRequest();
-                    }
-                    break;
-                default:
-                    logger.warn("Framework sent command to unknown channel with id '{}'", channelUID.getId());
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+
+        switch (channelId) {
+            case PRINT_JOB_START:
+                if (command instanceof StringType) {
+                    String body = "{ \"command\": \"start\" }";
+                    httpRequestService.postRequest("api/job", body);
+                    jobState = JobState.STARTED;
+                }
+                break;
+            case PRINT_JOB_CANCEL:
+                if (command instanceof StringType) {
+                    String body = "{ \"command\": \"cancel\" }";
+                    httpRequestService.postRequest("api/job", body);
+                    jobState = JobState.CANCELED;
+                }
+                break;
+            case PRINT_JOB_PAUSE:
+                if (command instanceof StringType) {
+                    String body = "{ \"command\": \"pause\", \"action\": \"pause\" }";
+                    httpRequestService.postRequest("api/job", body);
+                    jobState = JobState.PAUSED;
+                }
+                break;
+            case PRINT_JOB_RESTART:
+                if (command instanceof StringType) {
+                    String body = "{ \"command\": \"pause\", \"action\": \"resume\" }";
+                    httpRequestService.postRequest("api/job", body);
+                    jobState = JobState.RUNNING;
+                }
+                break;
+            case PRINTER_HOMING_XYZ:
+                if (command instanceof StringType) {
+                    String body = "{ \"command\": \"home\", \"axes\": [\"x\", \"y\", \"z\"] }";
+                    httpRequestService.postRequest("api/printer/printhead", body);
+                }
+                break;
+            case PRINTER_HOMING_X:
+                if (command instanceof StringType) {
+                    String body = "{ \"command\": \"home\", \"axes\": [\"x\"] }";
+                    httpRequestService.postRequest("api/printer/printhead", body);
+                }
+                break;
+            case PRINTER_HOMING_Y:
+                if (command instanceof StringType) {
+                    String body = "{ \"command\": \"home\", \"axes\": [\"y\"] }";
+                    httpRequestService.postRequest("api/printer/printhead", body);
+                }
+                break;
+            case PRINTER_HOMING_Z:
+                if (command instanceof StringType) {
+                    String body = "{ \"command\": \"home\", \"axes\": [\"z\"] }";
+                    httpRequestService.postRequest("api/printer/printhead", body);
+                }
+                break;
+
+            default:
+                logger.warn("Framework sent command to unknown channel with id '{}'", channelUID.getId());
         }
     }
 
