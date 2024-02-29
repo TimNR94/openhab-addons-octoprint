@@ -30,7 +30,7 @@ public class OctoPrintConfiguration {
     public String password = "";
     public String apikey = "";
     public String serialPort = "";
-    public int baudRate = 115200;
+    public int baudRate;
     public String printerProfile = "";
-    public int refreshInterval = 10;
+    public int refreshInterval;
 }
