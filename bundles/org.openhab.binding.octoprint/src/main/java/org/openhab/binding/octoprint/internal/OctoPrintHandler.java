@@ -32,11 +32,16 @@ import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.*;
 import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.thing.binding.ThingHandlerCallback;
+import org.openhab.core.thing.binding.ThingTypeProvider;
 import org.openhab.core.thing.binding.builder.ChannelBuilder;
 import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.thing.type.ChannelDefinition;
 import org.openhab.core.thing.type.ChannelTypeUID;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -290,15 +295,16 @@ public class OctoPrintHandler extends BaseThingHandler {
         Channel channel = thing.getChannel(channelConfig.channelID);
         String label = channelConfig.label;
         Channel templateChannel = thing.getChannel(channelConfig.channelTypeUID);
-        if (templateChannel == null) {
-            logger.warn("templateChannel type is null");
-        }
-        assert templateChannel != null;
-        if (templateChannel.getChannelTypeUID() == null) {
-            logger.warn("templateChannel type is null");
-        }
-        @NonNull
-        ChannelTypeUID channelType = templateChannel.getChannelTypeUID();
+
+        BundleContext context = FrameworkUtil.getBundle(ThingTypeProvider.class).getBundleContext();
+        ServiceReference<@NonNull ThingTypeProvider> serviceReference = context
+                .getServiceReference(ThingTypeProvider.class);
+        ThingTypeProvider service = context.getService(serviceReference);
+
+        ChannelDefinition channelDefinition = service.getThingType(getThing().getThingTypeUID(), null)
+                .getChannelDefinitions().stream()
+                .filter(d -> d.getId().contentEquals(templateChannel.getChannelTypeUID().toString())).findFirst().get();
+        ChannelTypeUID channelType = channelDefinition.getChannelTypeUID();
 
         // create channel if missing
         if (channel == null && templateChannel.getChannelTypeUID() != null) {
