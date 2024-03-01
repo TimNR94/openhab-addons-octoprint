@@ -27,10 +27,13 @@ import org.openhab.binding.octoprint.internal.services.HttpRequestService;
 import org.openhab.binding.octoprint.internal.services.PollRequestService;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.StringType;
+import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.builder.ChannelBuilder;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.slf4j.Logger;
@@ -289,13 +292,18 @@ public class OctoPrintHandler extends BaseThingHandler {
         assert config != null;
 
         octopiServer = new OctopiServer(config.ip, config.apiKey, config.username);
+        httpRequestService = new HttpRequestService(octopiServer);
         logger.warn("Created {}", octopiServer);
+
+        ThingBuilder thingBuilder = editThing();
+        Channel channel = ChannelBuilder.create(new ChannelUID("octoprint:type:octoprint:1"), "String").build();
         pollRequestService = new PollRequestService(octopiServer, this);
+        thingBuilder.withChannel(channel);
+        updateThing(thingBuilder.build());
+
         pollRequestService.addPollRequest(SERVER_VERSION, "api/server", new ArrayList<String>(List.of("version")),
                 new StringType());
         pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval, TimeUnit.SECONDS);
-
-        httpRequestService = new HttpRequestService(octopiServer);
 
         // TODO: Initialize the handler.
         // The framework requires you to return from this method quickly, i.e. any network access must be done in
