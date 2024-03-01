@@ -60,12 +60,12 @@ public class PollRequestService {
             PollRequestInformation pollRequestInformation = entry.getValue();
 
             ContentResponse res = requestService.getRequest(pollRequestInformation.route);
-            JsonObject json = JsonParser.parseString(res.getContentAsString()).getAsJsonObject();
-            final JsonElement[] updatedValue = new JsonElement[1];
-            pollRequestInformation.jsonKey.forEach(key -> {
-                updatedValue[0] = json.get(key);
-            });
             if (res.getStatus() == 200) {
+                JsonObject json = JsonParser.parseString(res.getContentAsString()).getAsJsonObject();
+                final JsonElement[] updatedValue = new JsonElement[1];
+                pollRequestInformation.jsonKey.forEach(key -> {
+                    updatedValue[0] = json.get(key);
+                });
                 if (pollRequestInformation.type instanceof StringType) {
                     octoPrintHandler.updateChannel(channelUID, StringType.valueOf(updatedValue[0].getAsString()));
                     logger.debug("Updated Channel {} to state {}", channelUID, updatedValue[0].getAsString());
