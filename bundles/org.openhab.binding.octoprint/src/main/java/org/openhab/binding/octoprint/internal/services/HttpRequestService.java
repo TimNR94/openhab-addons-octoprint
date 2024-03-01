@@ -27,8 +27,6 @@ import org.openhab.binding.octoprint.internal.models.OctopiServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
-
 /**
  * The {@link HttpRequestService}.TODO
  *

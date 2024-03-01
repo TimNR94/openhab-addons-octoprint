@@ -14,6 +14,8 @@ package org.openhab.binding.octoprint.internal;
 
 import static org.openhab.binding.octoprint.internal.OctoPrintBindingConstants.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -87,7 +89,8 @@ public class OctoPrintHandler extends BaseThingHandler {
         octopiServer = new OctopiServer(config.ip, config.apikey, config.username);
         logger.warn("Created {}", octopiServer);
         pollRequestService = new PollRequestService(octopiServer, this);
-        pollRequestService.addPollRequest(SERVER_VERSION, "api/server", "version", new StringType());
+        pollRequestService.addPollRequest(SERVER_VERSION, "api/server", new ArrayList<String>(List.of("version")),
+                new StringType());
         pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval, TimeUnit.SECONDS);
 
         // TODO: Initialize the handler.

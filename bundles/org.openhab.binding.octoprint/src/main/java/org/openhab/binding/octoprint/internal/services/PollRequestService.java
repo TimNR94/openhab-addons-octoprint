@@ -13,17 +13,20 @@
 
 package org.openhab.binding.octoprint.internal.services;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.openhab.binding.octoprint.internal.OctoPrintHandler;
 import org.openhab.binding.octoprint.internal.models.OctopiServer;
+import org.openhab.binding.octoprint.internal.models.PollRequestInformation;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.types.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -44,7 +47,7 @@ public class PollRequestService {
         this.octoPrintHandler = octoPrintHandler;
     }
 
-    public void addPollRequest(String channelUID, String route, String jsonKey, State type) {
+    public void addPollRequest(String channelUID, String route, ArrayList<String> jsonKey, State type) {
         requests.putIfAbsent(channelUID, new PollRequestInformation(channelUID, route, jsonKey, type));
         logger.debug("added {} into poll requests as: [{}, {}, {}, {}]", channelUID, channelUID, route, jsonKey,
                 type.toString());
@@ -58,11 +61,14 @@ public class PollRequestService {
 
             ContentResponse res = requestService.getRequest(pollRequestInformation.route);
             JsonObject json = JsonParser.parseString(res.getContentAsString()).getAsJsonObject();
-            var updatedValue = json.get(pollRequestInformation.jsonKey);
+            final JsonElement[] updatedValue = new JsonElement[1];
+            pollRequestInformation.jsonKey.forEach(key -> {
+                updatedValue[0] = json.get(key);
+            });
             if (res.getStatus() == 200) {
                 if (pollRequestInformation.type instanceof StringType) {
-                    octoPrintHandler.updateChannel(channelUID, StringType.valueOf(updatedValue.getAsString()));
-                    logger.debug("Updated Channel {} to state {}", channelUID, updatedValue.getAsString());
+                    octoPrintHandler.updateChannel(channelUID, StringType.valueOf(updatedValue[0].getAsString()));
+                    logger.debug("Updated Channel {} to state {}", channelUID, updatedValue[0].getAsString());
                 }
             }
         }

@@ -11,7 +11,9 @@
  * SPDX-License-Identifier: EPL-2.0
  */
 
-package org.openhab.binding.octoprint.internal.services;
+package org.openhab.binding.octoprint.internal.models;
+
+import java.util.ArrayList;
 
 import org.openhab.core.types.State;
 
@@ -23,10 +25,10 @@ import org.openhab.core.types.State;
 public class PollRequestInformation {
     public final String channelUID;
     public final String route;
-    public final String jsonKey;
+    public final ArrayList<String> jsonKey;
     public final State type;
 
-    PollRequestInformation(String channelUID, String route, String jsonKey, State type) {
+    public PollRequestInformation(String channelUID, String route, ArrayList<String> jsonKey, State type) {
         this.channelUID = channelUID;
         this.route = route;
         this.jsonKey = jsonKey;
