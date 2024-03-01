@@ -19,21 +19,22 @@ import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.api.Response;
 import org.openhab.binding.octoprint.internal.models.OctopiServer;
+import org.openhab.binding.octoprint.internal.models.OwnChannelConfig;
 import org.openhab.binding.octoprint.internal.services.HttpRequestService;
 import org.openhab.binding.octoprint.internal.services.PollRequestService;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.StringType;
-import org.openhab.core.thing.Channel;
-import org.openhab.core.thing.ChannelUID;
-import org.openhab.core.thing.Thing;
-import org.openhab.core.thing.ThingStatus;
+import org.openhab.core.thing.*;
 import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.ThingHandlerCallback;
 import org.openhab.core.thing.binding.builder.ChannelBuilder;
 import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.thing.type.ChannelTypeUID;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.slf4j.Logger;
@@ -285,6 +286,44 @@ public class OctoPrintHandler extends BaseThingHandler {
         pollRequestService.poll();
     }
 
+    protected void addChannelIfMissingAndEnable(ThingBuilder thingBuilder, OwnChannelConfig channelConfig) {
+        Channel channel = thing.getChannel(channelConfig.channelID);
+        String label = channelConfig.label;
+        Channel templateChannel = thing.getChannel(channelConfig.channelTypeUID);
+        if (templateChannel == null) {
+            logger.warn("templateChannel type is null");
+        }
+        assert templateChannel != null;
+        if (templateChannel.getChannelTypeUID() == null) {
+            logger.warn("templateChannel type is null");
+        }
+        @NonNull
+        ChannelTypeUID channelType = templateChannel.getChannelTypeUID();
+
+        // create channel if missing
+        if (channel == null && templateChannel.getChannelTypeUID() != null) {
+            ChannelUID channelUID = new ChannelUID(thing.getUID(), channelConfig.channelID);
+
+            ThingHandlerCallback callback = getCallback();
+            if (callback == null) {
+                logger.warn("Could not get callback, adding '{}' failed.", channelUID);
+                return;
+            }
+
+            ChannelBuilder channelBuilder = callback.createChannelBuilder(channelUID, channelType);
+
+            if (label != null) {
+                channelBuilder.withLabel(label);
+            }
+            // if (config != null) {
+            // channelBuilder.withConfiguration(config);
+            // }
+
+            channel = channelBuilder.build();
+            thingBuilder.withChannel(channel);
+        }
+    }
+
     @Override
     public void initialize() {
         // ToDo: Error Handling for everything
@@ -296,11 +335,24 @@ public class OctoPrintHandler extends BaseThingHandler {
         logger.warn("Created {}", octopiServer);
 
         ThingBuilder thingBuilder = editThing();
-        Channel channel = ChannelBuilder.create(new ChannelUID("octoprint:type:octoprint:1"), "String").build();
-        pollRequestService = new PollRequestService(octopiServer, this);
-        thingBuilder.withChannel(channel);
-        updateThing(thingBuilder.build());
+        OwnChannelConfig channelConfig = new OwnChannelConfig(this.getThing().getUID(), "Autogen",
+                "printer_tool_temp_actual", "autolabel");
+        addChannelIfMissingAndEnable(thingBuilder, channelConfig);
 
+        // ChannelUID channelUID = new ChannelUID(this.getThing().getUID(), "autogen");
+        // Channel channel = ChannelBuilder.create(channelUID).withAcceptedItemType("String")
+        // .withType(new ChannelTypeUID("octoprint:autoWallachmed")).withLabel("autogen")
+        // .withDescription("autogenerierter Typ").build();
+        // logger.warn("Channel: {}", channel.getUID());
+        // logger.warn("Channeltype: {}", channel.getChannelTypeUID());
+        // logger.warn("Channel SERVER_VERSION: {}", this.getThing().getChannel(SERVER_VERSION).getUID());
+        // logger.warn("Channeltyype SERVER_VERSION: {}",
+        // this.getThing().getChannel(SERVER_VERSION).getChannelTypeUID());
+
+        // thingBuilder.withChannel(channel);
+        // updateThing(thingBuilder.build());
+
+        pollRequestService = new PollRequestService(octopiServer, this);
         pollRequestService.addPollRequest(SERVER_VERSION, "api/server", new ArrayList<String>(List.of("version")),
                 new StringType());
         pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval, TimeUnit.SECONDS);
