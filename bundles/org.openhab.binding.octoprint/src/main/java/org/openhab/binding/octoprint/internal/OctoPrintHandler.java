@@ -294,20 +294,22 @@ public class OctoPrintHandler extends BaseThingHandler {
     protected void addChannelIfMissingAndEnable(ThingBuilder thingBuilder, OwnChannelConfig channelConfig) {
         Channel channel = thing.getChannel(channelConfig.channelID);
         String label = channelConfig.label;
-        Channel templateChannel = thing.getChannel(channelConfig.channelTypeUID);
 
         BundleContext context = FrameworkUtil.getBundle(ThingTypeProvider.class).getBundleContext();
         ServiceReference<@NonNull ThingTypeProvider> serviceReference = context
                 .getServiceReference(ThingTypeProvider.class);
         ThingTypeProvider service = context.getService(serviceReference);
 
+        service.getThingType(getThing().getThingTypeUID(), null).getExtensibleChannelTypeIds()
+                .forEach(System.out::println);
+
         ChannelDefinition channelDefinition = service.getThingType(getThing().getThingTypeUID(), null)
-                .getChannelDefinitions().stream()
-                .filter(d -> d.getId().contentEquals(templateChannel.getChannelTypeUID().toString())).findFirst().get();
+                .getChannelDefinitions().stream().filter(d -> d.getId().contentEquals(channelConfig.channelTypeUID))
+                .findFirst().get();
         ChannelTypeUID channelType = channelDefinition.getChannelTypeUID();
 
         // create channel if missing
-        if (channel == null && templateChannel.getChannelTypeUID() != null) {
+        if (channel == null) {
             ChannelUID channelUID = new ChannelUID(thing.getUID(), channelConfig.channelID);
 
             ThingHandlerCallback callback = getCallback();
@@ -321,9 +323,6 @@ public class OctoPrintHandler extends BaseThingHandler {
             if (label != null) {
                 channelBuilder.withLabel(label);
             }
-            // if (config != null) {
-            // channelBuilder.withConfiguration(config);
-            // }
 
             channel = channelBuilder.build();
             thingBuilder.withChannel(channel);
@@ -344,19 +343,11 @@ public class OctoPrintHandler extends BaseThingHandler {
         OwnChannelConfig channelConfig = new OwnChannelConfig(this.getThing().getUID(), "Autogen",
                 "printer_tool_temp_actual", "autolabel");
         addChannelIfMissingAndEnable(thingBuilder, channelConfig);
+        OwnChannelConfig channelConfig2 = new OwnChannelConfig(this.getThing().getUID(), "Autogen2",
+                "printer_tool_temp_actual", "autolabel2");
+        addChannelIfMissingAndEnable(thingBuilder, channelConfig2);
 
-        // ChannelUID channelUID = new ChannelUID(this.getThing().getUID(), "autogen");
-        // Channel channel = ChannelBuilder.create(channelUID).withAcceptedItemType("String")
-        // .withType(new ChannelTypeUID("octoprint:autoWallachmed")).withLabel("autogen")
-        // .withDescription("autogenerierter Typ").build();
-        // logger.warn("Channel: {}", channel.getUID());
-        // logger.warn("Channeltype: {}", channel.getChannelTypeUID());
-        // logger.warn("Channel SERVER_VERSION: {}", this.getThing().getChannel(SERVER_VERSION).getUID());
-        // logger.warn("Channeltyype SERVER_VERSION: {}",
-        // this.getThing().getChannel(SERVER_VERSION).getChannelTypeUID());
-
-        // thingBuilder.withChannel(channel);
-        // updateThing(thingBuilder.build());
+        updateThing(thingBuilder.build());
 
         pollRequestService = new PollRequestService(octopiServer, this);
         pollRequestService.addPollRequest(SERVER_VERSION, "api/server", new ArrayList<String>(List.of("version")),
