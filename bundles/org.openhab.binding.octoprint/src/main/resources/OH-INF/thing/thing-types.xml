@@ -26,38 +26,67 @@
 			<channel id="print_job_file_date" typeId="printJobFileDate"/>
 			<channel id="print_job_start" typeId="printJobStart"/>
 			<channel id="print_job_cancel" typeId="printJobCancel"/>
-			<channel id="print_job_pause" typeId="printJobCancel"/>
+			<channel id="print_job_pause" typeId="printJobPause"/>
 			<channel id="print_job_restart" typeId="printJobRestart"/>
 			<channel id="print_job_estimated_print_time" typeId="printJobEstPrintTime"/>
 			<channel id="print_job_progress" typeId="printJobProgress"/>
 			<channel id="print_job_current_print_time" typeId="printJobCurrentPrintTime"/>
 			<channel id="print_job_estimated_print_time_left" typeId="printJobEstTimeLeft"/>
 			<channel id="printer_state" typeId="printerState"/>
-			<channel id="printer_homing" typeId="printerHoming"/>
+			<channel id="printer_jog_x" typeId="printerJogX"/>
+			<channel id="printer_jog_y" typeId="printerJogY"/>
+			<channel id="printer_jog_z" typeId="printerJogZ"/>
+			<channel id="printer_homing_x" typeId="printerHomingX"/>
+			<channel id="printer_homing_y" typeId="printerHomingY"/>
+			<channel id="printer_homing_z" typeId="printerHomingZ"/>
+			<channel id="printer_homing_xyz" typeId="printerHomingXYZ"/>
+			<channel id="printer_tool_select" typeId="printerToolSelect"/>
+			<channel id="printer_tool_flowrate" typeId="printerToolFlowrate"/>
 			<channel id="printer_tool_temp_actual" typeId="printerToolTempActual"/>
 			<channel id="printer_tool_temp_target" typeId="printerToolTempTarget"/>
+			<channel id="printer_tool_temp_offset" typeId="printerToolTempOffset"/>
 			<channel id="printer_bed_temp_actual" typeId="printerBedTempActual"/>
 			<channel id="printer_bed_temp_target" typeId="printerBedTempTarget"/>
+			<channel id="printer_bed_temp_offset" typeId="printerBedTempOffset"/>
 			<channel id="printer_chamber_temp_actual" typeId="printerChamberTempActual"/>
 			<channel id="printer_chamber_temp_target" typeId="printerChamberTempTarget"/>
+			<channel id="printer_chamber_temp_offset" typeId="printerChamberTempOffset"/>
 			<channel id="printer_sd_state" typeId="SDCardState"/>
 		</channels>
 
 		<config-description>
 			<parameter name="ip" type="text" required="true">
-				<context>server-ip</context>
-				<label>Server IP</label>
+				<context>ip-address</context>
+				<label>IP</label>
 				<description>IP address of the device</description>
+				<default>192.168.0.104</default>
 			</parameter>
 			<parameter name="password" type="text" required="true">
 				<context>password</context>
 				<label>Password</label>
 				<description>Password to access the device</description>
 			</parameter>
-			<parameter name="apikey" type="text" required="false">
+			<parameter name="apiKey" type="text" required="false">
 				<context>api-key</context>
 				<label>Api Key</label>
 				<description>Api key to access the device</description>
+				<default>D6A9A8F8907C4841975508312EB5DAA1</default>
+			</parameter>
+			<parameter name="serialPort" type="text" required="false">
+				<context>serial port</context>
+				<label>Serial Port</label>
+				<description>The printer's serial port</description>
+			</parameter>
+			<parameter name="baudRate" type="integer" required="false">
+				<context>baud rate</context>
+				<label>Baud Rate</label>
+				<description>The printer's baud rate</description>
+				<default>115200</default>
+			</parameter>
+			<parameter name="printerProfile" type="text" required="false">
+				<context>printer profile</context>
+				<label>Printer Profile</label>
+				<description>The printer's profile</description>
 			</parameter>
 			<parameter name="refreshInterval" type="integer" unit="s" min="1">
 				<label>Refresh Interval</label>
@@ -181,7 +210,7 @@
 
 	<channel-type id="printJobRestart">
 		<item-type>String</item-type>
-		<label>Start Print Job</label>
+		<label>Restart Print Job</label>
 		<description>Start the print job of the selected file</description>
 		<state>
 			<options>
@@ -231,10 +260,31 @@
 		<state readOnly="true"/>
 	</channel-type>
 
-	<channel-type id="printerHoming">
-		<item-type>Switch</item-type>
-		<label>Homing Printer</label>
-		<description>Homing of the printer</description>
+	<channel-type id="printerJogX">
+		<item-type>Number</item-type>
+		<label>Move X Axis</label>
+		<description>Move printer head in x axis direction</description>
+		<state step="0.01" pattern="%d mm" readOnly="false"/>
+	</channel-type>
+
+	<channel-type id="printerJogY">
+		<item-type>Number</item-type>
+		<label>Move Y Axis</label>
+		<description>Move printer head in y axis direction</description>
+		<state step="0.01" pattern="%d mm" readOnly="false"/>
+	</channel-type>
+
+	<channel-type id="printerJogZ">
+		<item-type>Number</item-type>
+		<label>Move Z Axis</label>
+		<description>Move printer head in z axis direction</description>
+		<state step="0.01" pattern="%d mm" readOnly="false"/>
+	</channel-type>
+
+	<channel-type id="printerHomingX">
+		<item-type>String</item-type>
+		<label>Homing Printer Axis X</label>
+		<description>Homing of the printer's x axis</description>
 		<state>
 			<options>
 				<option value="HOMING">homing</option>
@@ -246,6 +296,71 @@
 				<option value="HOMING">homing</option>
 			</options>
 		</command>
+	</channel-type>
+
+	<channel-type id="printerHomingY">
+		<item-type>String</item-type>
+		<label>Homing Printer Axis Y</label>
+		<description>Homing of the printer's y axis</description>
+		<state>
+			<options>
+				<option value="HOMING">homing</option>
+				<option value="HOMED">homed</option>
+			</options>
+		</state>
+		<command>
+			<options>
+				<option value="HOMING">homing</option>
+			</options>
+		</command>
+	</channel-type>
+
+	<channel-type id="printerHomingZ">
+		<item-type>String</item-type>
+		<label>Homing Printer Axis Z</label>
+		<description>Homing of the printer's z axis</description>
+		<state>
+			<options>
+				<option value="HOMING">homing</option>
+				<option value="HOMED">homed</option>
+			</options>
+		</state>
+		<command>
+			<options>
+				<option value="HOMING">homing</option>
+			</options>
+		</command>
+	</channel-type>
+
+	<channel-type id="printerHomingXYZ">
+		<item-type>String</item-type>
+		<label>Homing Printer Axis XYZ</label>
+		<description>Homing of the printer's x, y and z axis</description>
+		<state>
+			<options>
+				<option value="HOMING">homing</option>
+				<option value="HOMED">homed</option>
+			</options>
+		</state>
+		<command>
+			<options>
+				<option value="HOMING">homing</option>
+			</options>
+		</command>
+	</channel-type>
+
+	<channel-type id="printerToolSelect">
+		<item-type>Number</item-type>
+		<label>Printer Tool Select</label>
+		<description>Select a printer tool</description>
+		<state readOnly="false"/>
+	</channel-type>
+
+	<channel-type id="printerToolFlowrate">
+		<item-type>Number</item-type>
+		<label>Printer Tool Flowrate</label>
+		<description>Apply a printer tool flowrate</description>
+		<state min="75" max="125" step="1" pattern="%d %%" readOnly="false"/>
 	</channel-type>
 
 	<channel-type id="printerToolTempActual">
@@ -260,6 +375,14 @@
 		<item-type>Number</item-type>
 		<label>Target Tool Temperature</label>
 		<description>Target temperature of the printer tool</description>
+		<category>Temperature</category>
+		<state pattern="%.1f °C" readOnly="false"/>
+	</channel-type>
+
+	<channel-type id="printerToolTempOffset">
+		<item-type>Number</item-type>
+		<label>Tool Temperature Offset</label>
+		<description>Temperature offset of the printer tool</description>
 		<category>Temperature</category>
 		<state pattern="%.1f °C" readOnly="false"/>
 	</channel-type>
@@ -280,6 +403,14 @@
 		<state pattern="%.1f °C" readOnly="false"/>
 	</channel-type>
 
+	<channel-type id="printerBedTempOffset">
+		<item-type>Number</item-type>
+		<label>Bed Temperature Offset</label>
+		<description>Temperature offset of the printer bed</description>
+		<category>Temperature</category>
+		<state pattern="%.1f °C" readOnly="false"/>
+	</channel-type>
+
 	<channel-type id="printerChamberTempActual">
 		<item-type>Number</item-type>
 		<label>Actual Chamber Temperature</label>
@@ -292,6 +423,14 @@
 		<item-type>Number</item-type>
 		<label>Target Chamber Temperature</label>
 		<description>Target temperature of the printer chamber</description>
+		<category>Temperature</category>
+		<state pattern="%.1f °C" readOnly="false"/>
+	</channel-type>
+
+	<channel-type id="printerChamberTempOffset">
+		<item-type>Number</item-type>
+		<label>Chamber Temperature Offset</label>
+		<description>Temperature offset of the printer chamber</description>
 		<category>Temperature</category>
 		<state pattern="%.1f °C" readOnly="false"/>
 	</channel-type>
