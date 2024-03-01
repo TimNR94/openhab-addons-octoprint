@@ -38,7 +38,7 @@ public class HttpRequestService {
     private final OctopiServer server;
     HttpClient httpClient = new HttpClient();
 
-    HttpRequestService(OctopiServer octopiServer) {
+    public HttpRequestService(OctopiServer octopiServer) {
         server = octopiServer;
         try {
             httpClient.start();
@@ -67,7 +67,7 @@ public class HttpRequestService {
         }
     }
 
-    Response postRequest(String route, String body) {
+    public Response postRequest(String route, String body) {
         String uri = String.format("http://%1$s/%2$s", server.ip, route);
         logger.warn("uri: {}", uri);
         Request request = httpClient.newRequest(uri).header("X-Api-Key", server.apiKey)
