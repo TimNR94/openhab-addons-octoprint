@@ -5,7 +5,7 @@
 	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
 
 	<!-- Thing Type -->
-	<thing-type id="octoprint">
+	<thing-type id="octoprint" extensible="printerToolTempActual,printerToolTempTarget,printerToolTempOffset">
 		<!-- Comment this in for Things which need a Bridge to function.
 			<supported-bridge-type-refs>
 			<bridge-type-ref id="OctoPrintBridge" />
@@ -42,9 +42,6 @@
 			<channel id="printer_homing_xyz" typeId="printerHomingXYZ"/>
 			<channel id="printer_tool_select" typeId="printerToolSelect"/>
 			<channel id="printer_tool_flowrate" typeId="printerToolFlowrate"/>
-			<channel id="printer_tool_temp_actual" typeId="printerToolTempActual"/>
-			<channel id="printer_tool_temp_target" typeId="printerToolTempTarget"/>
-			<channel id="printer_tool_temp_offset" typeId="printerToolTempOffset"/>
 			<channel id="printer_bed_temp_actual" typeId="printerBedTempActual"/>
 			<channel id="printer_bed_temp_target" typeId="printerBedTempTarget"/>
 			<channel id="printer_bed_temp_offset" typeId="printerBedTempOffset"/>
@@ -65,6 +62,7 @@
 				<context>password</context>
 				<label>Password</label>
 				<description>Password to access the device</description>
+				<default>password</default>
 			</parameter>
 			<parameter name="apiKey" type="text" required="false">
 				<context>api-key</context>
@@ -97,7 +95,34 @@
 		</config-description>
 	</thing-type>
 
-	<!-- Channels -->
+	<channel-type id="printerToolTempActual">
+		<item-type>Number</item-type>
+		<label>Actual Tool Temperature</label>
+		<description>Actual temperature of the printer tool</description>
+		<category>Temperature</category>
+		<state pattern="%.1f °C" readOnly="true"/>
+		<config-description-ref uri="thing-type:octoprint:toolconfig"/>
+	</channel-type>
+
+	<channel-type id="printerToolTempTarget">
+		<item-type>Number</item-type>
+		<label>Target Tool Temperature</label>
+		<description>Target temperature of the printer tool</description>
+		<category>Temperature</category>
+		<state pattern="%.1f °C" readOnly="false"/>
+		<config-description-ref uri="thing-type:octoprint:toolconfig"/>
+	</channel-type>
+
+	<channel-type id="printerToolTempOffset">
+		<item-type>Number</item-type>
+		<label>Tool Temperature Offset</label>
+		<description>Temperature offset of the printer tool</description>
+		<category>Temperature</category>
+		<state pattern="%.1f °C" readOnly="false"/>
+		<config-description-ref uri="thing-type:octoprint:toolconfig"/>
+	</channel-type>
+
+
 	<channel-type id="serverVersion">
 		<item-type>String</item-type>
 		<label>Server Version</label>
@@ -361,30 +386,6 @@
 		<label>Printer Tool Flowrate</label>
 		<description>Apply a printer tool flowrate</description>
 		<state min="75" max="125" step="1" pattern="%d %%" readOnly="false"/>
-	</channel-type>
-
-	<channel-type id="printerToolTempActual">
-		<item-type>Number</item-type>
-		<label>Actual Tool Temperature</label>
-		<description>Actual temperature of the printer tool</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="true"/>
-	</channel-type>
-
-	<channel-type id="printerToolTempTarget">
-		<item-type>Number</item-type>
-		<label>Target Tool Temperature</label>
-		<description>Target temperature of the printer tool</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
-	</channel-type>
-
-	<channel-type id="printerToolTempOffset">
-		<item-type>Number</item-type>
-		<label>Tool Temperature Offset</label>
-		<description>Temperature offset of the printer tool</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
 	</channel-type>
 
 	<channel-type id="printerBedTempActual">

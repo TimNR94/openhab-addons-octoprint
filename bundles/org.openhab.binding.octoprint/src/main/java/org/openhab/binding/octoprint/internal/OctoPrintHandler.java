@@ -14,10 +14,9 @@ package org.openhab.binding.octoprint.internal;
 
 import static org.openhab.binding.octoprint.internal.OctoPrintBindingConstants.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -27,6 +26,8 @@ import org.openhab.binding.octoprint.internal.models.OctopiServer;
 import org.openhab.binding.octoprint.internal.models.OwnChannelConfig;
 import org.openhab.binding.octoprint.internal.services.HttpRequestService;
 import org.openhab.binding.octoprint.internal.services.PollRequestService;
+import org.openhab.core.config.core.ConfigDescription;
+import org.openhab.core.config.core.Configuration;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.*;
@@ -35,8 +36,10 @@ import org.openhab.core.thing.binding.ThingHandlerCallback;
 import org.openhab.core.thing.binding.ThingTypeProvider;
 import org.openhab.core.thing.binding.builder.ChannelBuilder;
 import org.openhab.core.thing.binding.builder.ThingBuilder;
-import org.openhab.core.thing.type.ChannelDefinition;
+import org.openhab.core.thing.type.ChannelType;
+import org.openhab.core.thing.type.ChannelTypeBuilder;
 import org.openhab.core.thing.type.ChannelTypeUID;
+import org.openhab.core.thing.type.StateChannelTypeBuilder;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.osgi.framework.BundleContext;
@@ -300,33 +303,88 @@ public class OctoPrintHandler extends BaseThingHandler {
                 .getServiceReference(ThingTypeProvider.class);
         ThingTypeProvider service = context.getService(serviceReference);
 
+        System.out.println("========================= getExtensibleChannelTypeIds =========================");
         service.getThingType(getThing().getThingTypeUID(), null).getExtensibleChannelTypeIds()
                 .forEach(System.out::println);
 
-        ChannelDefinition channelDefinition = service.getThingType(getThing().getThingTypeUID(), null)
-                .getChannelDefinitions().stream().filter(d -> d.getId().contentEquals(channelConfig.channelTypeUID))
-                .findFirst().get();
-        ChannelTypeUID channelType = channelDefinition.getChannelTypeUID();
+        String channelTypeId = service.getThingType(getThing().getThingTypeUID(), null).getExtensibleChannelTypeIds()
+                .stream().findFirst().get();
+        ChannelTypeUID channelTypeUID = new ChannelTypeUID(THING_TYPE_OCTOPRINT.getBindingId(), channelTypeId);
 
-        // create channel if missing
-        if (channel == null) {
-            ChannelUID channelUID = new ChannelUID(thing.getUID(), channelConfig.channelID);
+        StateChannelTypeBuilder stateChannelTypeBuilder = null;
 
-            ThingHandlerCallback callback = getCallback();
-            if (callback == null) {
-                logger.warn("Could not get callback, adding '{}' failed.", channelUID);
-                return;
-            }
-
-            ChannelBuilder channelBuilder = callback.createChannelBuilder(channelUID, channelType);
-
-            if (label != null) {
-                channelBuilder.withLabel(label);
-            }
-
-            channel = channelBuilder.build();
-            thingBuilder.withChannel(channel);
+        try {
+            stateChannelTypeBuilder = ChannelTypeBuilder.state(channelTypeUID, "autoStateTypelable", "Number")
+                    .withConfigDescriptionURI(new URI("thing-type:octoprint:toolconfig"));
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
         }
+        ChannelType channelType1 = stateChannelTypeBuilder.build();
+
+        System.out.println("========================= channelType1 =========================");
+        System.out.printf("channelType1: %1$s%n", channelType1);
+        System.out.printf("channelType1 config description uri: %1$s%n", channelType1.getConfigDescriptionURI());
+        ChannelTypeUID channelTypeUID1 = channelType1.getUID();
+
+        ChannelUID channelUID1 = new ChannelUID(thing.getUID(), channelConfig.channelID);
+        Configuration config = new Configuration();
+        config.put("tool_name", (Object) "Tool1");
+
+        System.out.println("========================= config =========================");
+        System.out.printf("config: %1$s%n", config);
+
+        ChannelBuilder channelBuilder1 = ChannelBuilder.create(channelUID1).withType(channelTypeUID1)
+                .withConfiguration(config);
+
+        Channel channel1 = channelBuilder1.build();
+        System.out.println("========================= channel1 =========================");
+        System.out.printf("ChannelTypeUID: %1$s%n", channel1.getChannelTypeUID());
+        System.out.printf("ChannelUID: %1$s%n", channel1.getUID());
+        System.out.println("========================= channelConfig1 =========================");
+        Configuration channelConfig1 = channel1.getConfiguration();
+        System.out.printf("Channel config: %1$s%n", channelConfig1);
+        System.out.printf("Channel config properties: %1$s%n", channelConfig1.getProperties());
+        System.out.printf("Channel properties: %1$s%n", channel1.getProperties());
+
+        ThingHandlerCallback callback = getCallback();
+        if (callback == null) {
+            logger.warn("Could not get callback");
+            return;
+        }
+        System.out.println("========================= callback.getConfigDescription =========================");
+        ConfigDescription channelConfigDescription = callback.getConfigDescription(channelTypeUID1);
+        // callback.editChannel(getThing(), channelUID1).
+        System.out.printf("channel1.getProperties: %1$s%n", channel1.getProperties());
+        System.out.printf("channelConfigDescription: %1$s%n", channelConfigDescription);
+        System.out.printf("channelConfigDescription.toParametersMap: %1$s%n",
+                channelConfigDescription.toParametersMap());
+
+        thingBuilder.withChannel(channel1);
+
+        // ChannelDefinition channelDefinition = service.getThingType(getThing().getThingTypeUID(), null)
+        // .getChannelDefinitions().stream().filter(d -> d.getId().contentEquals(channelConfig.channelTypeUID))
+        // .findFirst().get();
+        // ChannelTypeUID channelType = channelDefinition.getChannelTypeUID();
+        //
+        // // create channel if missing
+        // if (channel == null) {
+        // ChannelUID channelUID = new ChannelUID(thing.getUID(), channelConfig.channelID);
+        //
+        // ThingHandlerCallback callback = getCallback();
+        // if (callback == null) {
+        // logger.warn("Could not get callback, adding '{}' failed.", channelUID);
+        // return;
+        // }
+        //
+        // ChannelBuilder channelBuilder = callback.createChannelBuilder(channelUID, channelType);
+        //
+        // if (label != null) {
+        // channelBuilder.withLabel(label);
+        // }
+        //
+        // channel = channelBuilder.build();
+        // thingBuilder.withChannel(channel);
+        // }
     }
 
     @Override
@@ -343,16 +401,14 @@ public class OctoPrintHandler extends BaseThingHandler {
         OwnChannelConfig channelConfig = new OwnChannelConfig(this.getThing().getUID(), "Autogen",
                 "printer_tool_temp_actual", "autolabel");
         addChannelIfMissingAndEnable(thingBuilder, channelConfig);
-        OwnChannelConfig channelConfig2 = new OwnChannelConfig(this.getThing().getUID(), "Autogen2",
-                "printer_tool_temp_actual", "autolabel2");
-        addChannelIfMissingAndEnable(thingBuilder, channelConfig2);
 
         updateThing(thingBuilder.build());
 
-        pollRequestService = new PollRequestService(octopiServer, this);
-        pollRequestService.addPollRequest(SERVER_VERSION, "api/server", new ArrayList<String>(List.of("version")),
-                new StringType());
-        pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval, TimeUnit.SECONDS);
+        // pollRequestService = new PollRequestService(octopiServer, this);
+        // pollRequestService.addPollRequest(SERVER_VERSION, "api/server", new ArrayList<String>(List.of("version")),
+        // new StringType());
+        // pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval,
+        // TimeUnit.SECONDS);
 
         // TODO: Initialize the handler.
         // The framework requires you to return from this method quickly, i.e. any network access must be done in
