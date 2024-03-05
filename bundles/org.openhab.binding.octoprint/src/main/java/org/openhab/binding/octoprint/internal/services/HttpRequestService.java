@@ -47,13 +47,13 @@ public class HttpRequestService {
         }
     }
 
-    ContentResponse getRequest(String route) {
+    public ContentResponse getRequest(String route) {
         String uri = String.format("http://%1$s/%2$s", server.ip, route);
-        logger.warn("uri: {}", uri);
+        logger.debug("uri: {}", uri);
         Request request = httpClient.newRequest(uri).header("X-Api-Key", server.apiKey).method(HttpMethod.GET);
         try {
             ContentResponse res = request.send();
-            logger.warn("response: status: {}, body: {}", res.getStatus(), res.getContentAsString());
+            logger.debug("response: status: {}, body: {}", res.getStatus(), res.getContentAsString());
             return res;
         } catch (InterruptedException e) {
             // TODO
@@ -69,13 +69,13 @@ public class HttpRequestService {
 
     public Response postRequest(String route, String body) {
         String uri = String.format("http://%1$s/%2$s", server.ip, route);
-        logger.warn("uri: {}", uri);
+        logger.debug("uri: {}", uri);
         Request request = httpClient.newRequest(uri).header("X-Api-Key", server.apiKey)
                 .header(HttpHeader.ACCEPT, "application/json").header(HttpHeader.CONTENT_TYPE, "application/json")
                 .method(HttpMethod.POST).content(new StringContentProvider(body), "application/json");
         try {
             Response res = request.send();
-            logger.warn("response: status: {}", res.getStatus());
+            logger.debug("response: status: {}", res.getStatus());
             return res;
         } catch (InterruptedException e) {
             // TODO

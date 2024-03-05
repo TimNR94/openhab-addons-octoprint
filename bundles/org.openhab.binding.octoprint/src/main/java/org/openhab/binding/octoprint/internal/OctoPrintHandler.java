@@ -14,39 +14,33 @@ package org.openhab.binding.octoprint.internal;
 
 import static org.openhab.binding.octoprint.internal.OctoPrintBindingConstants.*;
 
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 
-import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Response;
 import org.openhab.binding.octoprint.internal.models.OctopiServer;
-import org.openhab.binding.octoprint.internal.models.OwnChannelConfig;
+import org.openhab.binding.octoprint.internal.providers.OctoPrintChannelTypeProvider;
 import org.openhab.binding.octoprint.internal.services.HttpRequestService;
 import org.openhab.binding.octoprint.internal.services.PollRequestService;
-import org.openhab.core.config.core.ConfigDescription;
-import org.openhab.core.config.core.Configuration;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.*;
 import org.openhab.core.thing.binding.BaseThingHandler;
-import org.openhab.core.thing.binding.ThingHandlerCallback;
-import org.openhab.core.thing.binding.ThingTypeProvider;
 import org.openhab.core.thing.binding.builder.ChannelBuilder;
 import org.openhab.core.thing.binding.builder.ThingBuilder;
-import org.openhab.core.thing.type.ChannelType;
-import org.openhab.core.thing.type.ChannelTypeBuilder;
-import org.openhab.core.thing.type.ChannelTypeUID;
-import org.openhab.core.thing.type.StateChannelTypeBuilder;
+import org.openhab.core.thing.type.*;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
-import org.osgi.framework.ServiceReference;
+import org.openhab.core.types.StateDescriptionFragment;
+import org.openhab.core.types.StateDescriptionFragmentBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 /**
  * The {@link OctoPrintHandler} is responsible for handling commands, which are
@@ -57,6 +51,7 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class OctoPrintHandler extends BaseThingHandler {
     private final Logger logger = LoggerFactory.getLogger(OctoPrintHandler.class);
+    private final OctoPrintChannelTypeProvider channelTypeProvider;
     private @Nullable PollRequestService pollRequestService;
     private @Nullable OctopiServer octopiServer;
     private @Nullable ScheduledFuture<?> pollingJob;
@@ -64,8 +59,9 @@ public class OctoPrintHandler extends BaseThingHandler {
     private @Nullable HttpRequestService httpRequestService;
     private @Nullable OctoPrintConfiguration config;
 
-    public OctoPrintHandler(Thing thing) {
+    public OctoPrintHandler(Thing thing, OctoPrintChannelTypeProvider octoPrintChannelTypeProvider) {
         super(thing);
+        channelTypeProvider = octoPrintChannelTypeProvider;
     }
 
     @Override
@@ -294,97 +290,79 @@ public class OctoPrintHandler extends BaseThingHandler {
         pollRequestService.poll();
     }
 
-    protected void addChannelIfMissingAndEnable(ThingBuilder thingBuilder, OwnChannelConfig channelConfig) {
-        Channel channel = thing.getChannel(channelConfig.channelID);
-        String label = channelConfig.label;
-
-        BundleContext context = FrameworkUtil.getBundle(ThingTypeProvider.class).getBundleContext();
-        ServiceReference<@NonNull ThingTypeProvider> serviceReference = context
-                .getServiceReference(ThingTypeProvider.class);
-        ThingTypeProvider service = context.getService(serviceReference);
-
-        System.out.println("========================= getExtensibleChannelTypeIds =========================");
-        service.getThingType(getThing().getThingTypeUID(), null).getExtensibleChannelTypeIds()
-                .forEach(System.out::println);
-
-        String channelTypeId = service.getThingType(getThing().getThingTypeUID(), null).getExtensibleChannelTypeIds()
-                .stream().findFirst().get();
+    protected Map.Entry<String, ChannelType> channelEntry(String prefix, String channelName) {
+        String channelTypeId = String.format("%1$s%2$s", prefix.toLowerCase(), channelName);
+        String label = String.format("%1$s Tool Temperature", prefix);
         ChannelTypeUID channelTypeUID = new ChannelTypeUID(THING_TYPE_OCTOPRINT.getBindingId(), channelTypeId);
 
-        StateChannelTypeBuilder stateChannelTypeBuilder = null;
-
-        try {
-            stateChannelTypeBuilder = ChannelTypeBuilder.state(channelTypeUID, "autoStateTypelable", "Number")
-                    .withConfigDescriptionURI(new URI("thing-type:octoprint:toolconfig"));
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
+        if (channelTypeProvider.hasChannelType(channelTypeUID)) {
+            System.out.printf("found ChannelType: %1$s", channelTypeUID);
+            return Map.entry(prefix.toLowerCase(),
+                    Objects.requireNonNull(channelTypeProvider.getChannelType(channelTypeUID, null)));
         }
-        ChannelType channelType1 = stateChannelTypeBuilder.build();
 
-        System.out.println("========================= channelType1 =========================");
-        System.out.printf("channelType1: %1$s%n", channelType1);
-        System.out.printf("channelType1 config description uri: %1$s%n", channelType1.getConfigDescriptionURI());
-        ChannelTypeUID channelTypeUID1 = channelType1.getUID();
+        StateDescriptionFragment state = StateDescriptionFragmentBuilder.create().withPattern("%.1f °C")
+                .withReadOnly(true).build();
+        StateChannelTypeBuilder stateChannelTypeBuilder = ChannelTypeBuilder.state(channelTypeUID, "label", "Number");
+        ChannelType channelType = stateChannelTypeBuilder.build();
+        return Map.entry(prefix.toLowerCase(), channelType);
+    }
 
-        ChannelUID channelUID1 = new ChannelUID(thing.getUID(), channelConfig.channelID);
-        Configuration config = new Configuration();
-        config.put("tool_name", (Object) "Tool1");
+    protected void addTemperatureChannels(ThingBuilder thingBuilder) {
+        Map<String, ChannelType> channelTypes = Map.ofEntries(channelEntry("Actual", "PrinterToolTemp"),
+                channelEntry("Target", "PrinterToolTemp"), channelEntry("Offset", "PrinterToolTemp"));
+        // add tool temperature channels
+        ContentResponse res = httpRequestService.getRequest("api/printer/tool");
 
-        System.out.println("========================= config =========================");
-        System.out.printf("config: %1$s%n", config);
+        createTemperatureChannels(thingBuilder, res, channelTypes);
 
-        ChannelBuilder channelBuilder1 = ChannelBuilder.create(channelUID1).withType(channelTypeUID1)
-                .withConfiguration(config);
+        // add bed temperature channel
+        channelTypes = Map.ofEntries(channelEntry("Actual", "PrinterBedTemp"), channelEntry("Target", "PrinterBedTemp"),
+                channelEntry("Offset", "PrinterBedTemp"));
 
-        Channel channel1 = channelBuilder1.build();
-        System.out.println("========================= channel1 =========================");
-        System.out.printf("ChannelTypeUID: %1$s%n", channel1.getChannelTypeUID());
-        System.out.printf("ChannelUID: %1$s%n", channel1.getUID());
-        System.out.println("========================= channelConfig1 =========================");
-        Configuration channelConfig1 = channel1.getConfiguration();
-        System.out.printf("Channel config: %1$s%n", channelConfig1);
-        System.out.printf("Channel config properties: %1$s%n", channelConfig1.getProperties());
-        System.out.printf("Channel properties: %1$s%n", channel1.getProperties());
+        res = httpRequestService.getRequest("api/printer/bed");
+        createTemperatureChannels(thingBuilder, res, channelTypes);
 
-        ThingHandlerCallback callback = getCallback();
-        if (callback == null) {
-            logger.warn("Could not get callback");
-            return;
+        // add chamber temperature channel
+        channelTypes = Map.ofEntries(channelEntry("Actual", "PrinterChamberTemp"),
+                channelEntry("Target", "PrinterChamberTemp"), channelEntry("Offset", "PrinterChamberTemp"));
+
+        res = httpRequestService.getRequest("api/printer/chamber");
+        createTemperatureChannels(thingBuilder, res, channelTypes);
+    }
+
+    protected void createTemperatureChannels(ThingBuilder thingBuilder, ContentResponse res,
+            Map<String, ChannelType> channelTypes) {
+        if (res.getStatus() == 200) {
+            JsonObject json = JsonParser.parseString(res.getContentAsString()).getAsJsonObject();
+            System.out.println(json);
+            json.asMap().forEach((jsonKey, jsonValue) -> {
+                logger.debug("jsonKey: {}", jsonKey);
+                JsonObject temps = jsonValue.getAsJsonObject();
+                logger.debug("temps: {}", temps);
+
+                temps.keySet().forEach(key -> {
+                    String channelID = String.format("%1$s_temp_%2$s", key, jsonKey);
+                    ChannelUID channelUID = new ChannelUID(thing.getUID(), channelID);
+                    Map<String, String> properties = new HashMap<>();
+                    properties.put("tool_name", jsonKey);
+                    String jsonkeys = String.format("%1$s,%2$s", jsonKey, key);
+                    properties.put("jsonKeys", jsonkeys);
+
+                    ChannelBuilder channelBuilder = ChannelBuilder.create(channelUID)
+                            .withType(channelTypes.get(key).getUID()).withProperties(properties);
+
+                    Channel channel = channelBuilder.build();
+                    if (thing.getChannel(channelUID) == null) {
+                        thingBuilder.withChannel(channel);
+                    } else {
+                        logger.warn("Can not add channel {}, it alredy exists.", channelUID.getId());
+                    }
+                });
+            });
+        } else {
+            logger.error("Error in response: {}: {}", res.getStatus(), res.getContentAsString());
         }
-        System.out.println("========================= callback.getConfigDescription =========================");
-        ConfigDescription channelConfigDescription = callback.getConfigDescription(channelTypeUID1);
-        // callback.editChannel(getThing(), channelUID1).
-        System.out.printf("channel1.getProperties: %1$s%n", channel1.getProperties());
-        System.out.printf("channelConfigDescription: %1$s%n", channelConfigDescription);
-        System.out.printf("channelConfigDescription.toParametersMap: %1$s%n",
-                channelConfigDescription.toParametersMap());
-
-        thingBuilder.withChannel(channel1);
-
-        // ChannelDefinition channelDefinition = service.getThingType(getThing().getThingTypeUID(), null)
-        // .getChannelDefinitions().stream().filter(d -> d.getId().contentEquals(channelConfig.channelTypeUID))
-        // .findFirst().get();
-        // ChannelTypeUID channelType = channelDefinition.getChannelTypeUID();
-        //
-        // // create channel if missing
-        // if (channel == null) {
-        // ChannelUID channelUID = new ChannelUID(thing.getUID(), channelConfig.channelID);
-        //
-        // ThingHandlerCallback callback = getCallback();
-        // if (callback == null) {
-        // logger.warn("Could not get callback, adding '{}' failed.", channelUID);
-        // return;
-        // }
-        //
-        // ChannelBuilder channelBuilder = callback.createChannelBuilder(channelUID, channelType);
-        //
-        // if (label != null) {
-        // channelBuilder.withLabel(label);
-        // }
-        //
-        // channel = channelBuilder.build();
-        // thingBuilder.withChannel(channel);
-        // }
     }
 
     @Override
@@ -395,14 +373,17 @@ public class OctoPrintHandler extends BaseThingHandler {
 
         octopiServer = new OctopiServer(config.ip, config.apiKey, config.username);
         httpRequestService = new HttpRequestService(octopiServer);
-        logger.warn("Created {}", octopiServer);
+        logger.debug("Created {}", octopiServer);
 
         ThingBuilder thingBuilder = editThing();
-        OwnChannelConfig channelConfig = new OwnChannelConfig(this.getThing().getUID(), "Autogen",
-                "printer_tool_temp_actual", "autolabel");
-        addChannelIfMissingAndEnable(thingBuilder, channelConfig);
-
+        addTemperatureChannels(thingBuilder);
         updateThing(thingBuilder.build());
+
+        // OwnChannelConfig channelConfig = new OwnChannelConfig(this.getThing().getUID(), "Autogen",
+        // "printer_tool_temp_actual", "autolabel");
+        // addChannelIfMissingAndEnable(thingBuilder, channelConfig);
+        //
+        // updateThing(thingBuilder.build());
 
         // pollRequestService = new PollRequestService(octopiServer, this);
         // pollRequestService.addPollRequest(SERVER_VERSION, "api/server", new ArrayList<String>(List.of("version")),
@@ -448,6 +429,13 @@ public class OctoPrintHandler extends BaseThingHandler {
         // Add a description to give user information to understand why thing does not work as expected. E.g.
         // updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
         // "Can not access device as username and/or password are invalid");
+    }
+
+    @Override
+    public void thingUpdated(Thing thing) {
+        dispose();
+        this.thing = thing;
+        initialize();
     }
 
     @Override
