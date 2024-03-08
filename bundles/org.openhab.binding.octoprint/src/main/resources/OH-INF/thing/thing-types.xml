@@ -75,4 +75,83 @@
 		<state readOnly="true"/>
 	</channel-type>
 
+	<channel-type id="printerConnectionState">
+		<item-type>String</item-type>
+		<label>Printer Connection State</label>
+		<description>Connection state of the printer, connected via OctoPrint server</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printJobState">
+		<item-type>String</item-type>
+		<label>Print Job State</label>
+		<description>State of the current print job</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printJobFileName">
+		<item-type>String</item-type>
+		<label>Print Job File Name</label>
+		<description>File name of the current print job</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printJobFileOrigin">
+		<item-type>String</item-type>
+		<label>Print Job File Path</label>
+		<description>File path of the current print job</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printJobFileSize">
+		<item-type>Number</item-type>
+		<label>Print Job File Size</label>
+		<description>File size of the current print job</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printJobFileDate">
+		<item-type>DateTime</item-type>
+		<label>Print Job File Date</label>
+		<description>Last edit of the current print job file</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printJobEstPrintTime">
+		<item-type>Number</item-type>
+		<label>Estimated Print Time</label>
+		<description>Estimated print time of the current print job</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printJobProgress">
+		<item-type>Number</item-type>
+		<label>Print Job Progress</label>
+		<description>Percentage of completion of current print job</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printJobCurrentPrintTime">
+		<item-type>Number</item-type>
+		<label>Elapsed Print Time</label>
+		<description>Elapsed print time of the current print job</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printJobEstTimeLeft">
+		<item-type>Number</item-type>
+		<label>Estimated Print Time Left</label>
+		<description>Estimated print time left for the current print job</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="printerState">
+		<item-type>String</item-type>
+		<label>Printer State</label>
+		<description>State of the printer</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+
+
 </thing:thing-descriptions>
