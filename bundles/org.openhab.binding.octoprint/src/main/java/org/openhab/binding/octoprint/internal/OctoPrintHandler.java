@@ -15,8 +15,10 @@ package org.openhab.binding.octoprint.internal;
 import static org.openhab.binding.octoprint.internal.OctoPrintBindingConstants.*;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -288,7 +290,13 @@ public class OctoPrintHandler extends BaseThingHandler {
     }
 
     private void pollingCode() {
-        pollRequestService.poll();
+        assert pollRequestService != null;
+        try {
+            pollRequestService.poll();
+        } catch (ExecutionException | TimeoutException | InterruptedException e) {
+            updateStatus(ThingStatus.OFFLINE);
+            logger.error("Error: {}", e.toString());
+        }
     }
 
     protected Map.Entry<String, ChannelType> channelEntry(String prefix, String channelName, String description) {
@@ -311,22 +319,32 @@ public class OctoPrintHandler extends BaseThingHandler {
     }
 
     protected void addTemperatureChannels(ThingBuilder thingBuilder) {
+        assert httpRequestService != null;
         Map<String, ChannelType> channelTypes = Map.ofEntries(
                 channelEntry("Actual", "PrinterToolTemp", "Actual temperature of the printer tool"),
                 channelEntry("Target", "PrinterToolTemp", "Target temperature of the printer tool"),
                 channelEntry("Offset", "PrinterToolTemp", "Temperature offset of the printer tool"));
         // add tool temperature channels
-        ContentResponse res = httpRequestService.getRequest("api/printer/tool");
+        ContentResponse res = null;
+        try {
+            res = httpRequestService.getRequest("api/printer/tool");
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            logger.error("Error: {}", e.toString());
+        }
 
-        createTemperatureChannels(thingBuilder, res, channelTypes, "api/printer/tool");
+        createTemperatureChannels(thingBuilder, Objects.requireNonNull(res), channelTypes, "api/printer/tool");
 
         // add bed temperature channel
         channelTypes = Map.ofEntries(channelEntry("Actual", "PrinterBedTemp", "Actual temperature of the printer bed"),
                 channelEntry("Target", "PrinterBedTemp", "Target temperature of the printer bed"),
                 channelEntry("Offset", "PrinterBedTemp", "Temperature offset of the printer tool"));
 
-        res = httpRequestService.getRequest("api/printer/bed");
-        createTemperatureChannels(thingBuilder, res, channelTypes, "api/printer/bed");
+        try {
+            res = httpRequestService.getRequest("api/printer/bed");
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            logger.error("Error: {}", e.toString());
+        }
+        createTemperatureChannels(thingBuilder, Objects.requireNonNull(res), channelTypes, "api/printer/bed");
 
         // add chamber temperature channel
         channelTypes = Map.ofEntries(
@@ -334,8 +352,12 @@ public class OctoPrintHandler extends BaseThingHandler {
                 channelEntry("Target", "PrinterChamberTemp", "Target temperature of the printer chamber"),
                 channelEntry("Offset", "PrinterChamberTemp", "Temperature offset of the printer chamber"));
 
-        res = httpRequestService.getRequest("api/printer/chamber");
-        createTemperatureChannels(thingBuilder, res, channelTypes, "api/printer/chamber");
+        try {
+            res = httpRequestService.getRequest("api/printer/chamber");
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            logger.error("Error: {}", e.toString());
+        }
+        createTemperatureChannels(thingBuilder, Objects.requireNonNull(res), channelTypes, "api/printer/chamber");
     }
 
     protected void createTemperatureChannels(ThingBuilder thingBuilder, ContentResponse res,
@@ -379,20 +401,6 @@ public class OctoPrintHandler extends BaseThingHandler {
         config = getConfigAs(OctoPrintConfiguration.class);
         assert config != null;
 
-        octopiServer = new OctopiServer(config.ip, config.apiKey, config.username);
-        httpRequestService = new HttpRequestService(octopiServer);
-        logger.debug("Created {}", octopiServer);
-
-        ThingBuilder thingBuilder = editThing();
-        addTemperatureChannels(thingBuilder);
-        updateThing(thingBuilder.build());
-
-        pollRequestService = new PollRequestService(octopiServer, this);
-        this.getThing().getChannels().stream()
-                .filter(c -> c.getProperties().containsKey("poll") && c.getProperties().containsKey("route"))
-                .forEach(c -> pollRequestService.addPollRequest(c));
-        pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval, TimeUnit.SECONDS);
-
         // TODO: Initialize the handler.
         // The framework requires you to return from this method quickly, i.e. any network access must be done in
         // the background initialization below.
@@ -409,13 +417,22 @@ public class OctoPrintHandler extends BaseThingHandler {
 
         // Example for background initialization:
         scheduler.execute(() -> {
-            boolean thingReachable = true; // <background task with long running initialization here>
-            // when done do:
-            if (thingReachable) {
-                updateStatus(ThingStatus.ONLINE);
-            } else {
-                updateStatus(ThingStatus.OFFLINE);
-            }
+            boolean thingReachable = true;
+            octopiServer = new OctopiServer(config.ip, config.apiKey, config.username);
+            httpRequestService = new HttpRequestService(octopiServer);
+            logger.debug("Created {}", octopiServer);
+
+            ThingBuilder thingBuilder = editThing();
+            addTemperatureChannels(thingBuilder);
+            updateThing(thingBuilder.build());
+
+            pollRequestService = new PollRequestService(octopiServer, this);
+            this.getThing().getChannels().stream()
+                    .filter(c -> c.getProperties().containsKey("poll") && c.getProperties().containsKey("route"))
+                    .forEach(c -> pollRequestService.addPollRequest(c));
+            pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval,
+                    TimeUnit.SECONDS);
+            updateStatus(ThingStatus.ONLINE);
         });
 
         // These logging types should be primarily used by bindings

@@ -47,24 +47,13 @@ public class HttpRequestService {
         }
     }
 
-    public ContentResponse getRequest(String route) {
+    public ContentResponse getRequest(String route) throws ExecutionException, InterruptedException, TimeoutException {
         String uri = String.format("http://%1$s/%2$s", server.ip, route);
         logger.debug("uri: {}", uri);
         Request request = httpClient.newRequest(uri).header("X-Api-Key", server.apiKey).method(HttpMethod.GET);
-        try {
-            ContentResponse res = request.send();
-            logger.debug("response: status: {}, body: {}", res.getStatus(), res.getContentAsString());
-            return res;
-        } catch (InterruptedException e) {
-            // TODO
-            throw new RuntimeException(e);
-        } catch (TimeoutException e) {
-            // TODO
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            // TODO
-            throw new RuntimeException(e);
-        }
+        ContentResponse res = request.send();
+        logger.debug("response: status: {}, body: {}", res.getStatus(), res.getContentAsString());
+        return res;
     }
 
     public Response postRequest(String route, String body) {

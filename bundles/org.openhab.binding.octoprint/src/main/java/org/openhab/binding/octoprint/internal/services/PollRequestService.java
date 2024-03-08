@@ -14,6 +14,8 @@
 package org.openhab.binding.octoprint.internal.services;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.openhab.binding.octoprint.internal.OctoPrintHandler;
@@ -50,7 +52,7 @@ public class PollRequestService {
         logger.debug("added {} into poll requests as: [{}, {}]", channel.getUID(), channel.getUID(), channel);
     }
 
-    public void poll() {
+    public void poll() throws ExecutionException, InterruptedException, TimeoutException {
         for (var entry : requests.entrySet()) {
             String channelID = entry.getKey();
             Channel channel = entry.getValue();
@@ -60,10 +62,14 @@ public class PollRequestService {
             if (route == null) {
                 logger.error("{} has no jsonKeys as parameter value of route", channelID);
             }
+            logger.warn("================ polling {} ({}) ================", channelID, route);
 
             ContentResponse res = requestService.getRequest(route);
             if (res.getStatus() == 200) {
-                JsonObject json = JsonParser.parseString(res.getContentAsString()).getAsJsonObject();
+                String result = res.getContentAsString();
+                logger.warn("{}", result);
+
+                JsonObject json = JsonParser.parseString(result).getAsJsonObject();
                 var jsonKeys = channel.getProperties().get("poll");
                 if (jsonKeys.isEmpty()) {
                     logger.error("{} has no jsonKeys as parameter value of poll", channelID);
@@ -75,7 +81,7 @@ public class PollRequestService {
                 updatedValue[0] = json;
                 for (String s : jsonKeyArray) {
                     updatedValue[0] = updatedValue[0].getAsJsonObject().get(s.strip());
-                    System.out.printf("%1$s: %2$s%n%n", s, updatedValue[0]);
+                    logger.warn("{}: {}", s, updatedValue[0]);
                 }
                 if (Objects.equals(acceptedItemType, "String")) {
                     if (updatedValue[0] == null || updatedValue[0].isJsonNull()) {

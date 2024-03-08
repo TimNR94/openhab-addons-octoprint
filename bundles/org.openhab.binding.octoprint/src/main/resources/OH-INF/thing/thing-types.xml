@@ -22,6 +22,72 @@
 					<property name="route">api/server</property>
 				</properties>
 			</channel>
+			<channel id="printer_connection_state" typeId="printerConnectionState">
+				<properties>
+					<property name="poll">current,state</property>
+					<property name="route">api/connection</property>
+				</properties>
+			</channel>
+			<channel id="print_job_state" typeId="printJobState">
+				<properties>
+					<property name="poll">state</property>
+					<property name="route">api/job</property>
+				</properties>
+			</channel>
+			<channel id="print_job_file_name" typeId="printJobFileName">
+				<properties>
+					<property name="poll">job,file,name</property>
+					<property name="route">api/job</property>
+				</properties>
+			</channel>
+			<channel id="print_job_file_origin" typeId="printJobFileOrigin">
+				<properties>
+					<property name="poll">job,file,origin</property>
+					<property name="route">api/job</property>
+				</properties>
+			</channel>
+			<channel id="print_job_file_size" typeId="printJobFileSize">
+				<properties>
+					<property name="poll">job,file,size</property>
+					<property name="route">api/job</property>
+				</properties>
+			</channel>
+			<channel id="print_job_file_date" typeId="printJobFileDate">
+				<properties>
+					<property name="poll">job,file,date</property>
+					<property name="route">api/job</property>
+				</properties>
+			</channel>
+			<channel id="print_job_estimated_print_time" typeId="printJobEstPrintTime">
+				<properties>
+					<property name="poll">job,estimatedPrintTime</property>
+					<property name="route">api/job</property>
+				</properties>
+			</channel>
+			<channel id="print_job_progress" typeId="printJobProgress">
+				<properties>
+					<property name="poll">progress,completion</property>
+					<property name="route">api/job</property>
+				</properties>
+			</channel>
+			<channel id="print_job_current_print_time" typeId="printJobCurrentPrintTime">
+				<properties>
+					<property name="poll">progress,printTime</property>
+					<property name="route">api/job</property>
+				</properties>
+			</channel>
+			<channel id="print_job_estimated_print_time_left" typeId="printJobEstTimeLeft">
+				<properties>
+					<property name="poll">progress,printTimeLeft</property>
+					<property name="route">api/job</property>
+				</properties>
+			</channel>
+			<channel id="printer_state" typeId="printerState">
+				<properties>
+					<property name="poll">state,text</property>
+					<property name="route">api/printer</property>
+				</properties>
+			</channel>
 		</channels>
 
 		<config-description>
