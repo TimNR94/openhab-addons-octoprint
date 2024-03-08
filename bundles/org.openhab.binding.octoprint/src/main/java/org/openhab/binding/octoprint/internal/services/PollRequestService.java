@@ -38,13 +38,11 @@ public class PollRequestService {
 
     final HttpRequestService requestService;
     final OctoPrintHandler octoPrintHandler;
-    // final OctoPrintChannelTypeProvider channelTypeProvider;
     HashMap<String, Channel> requests = new HashMap<>();
 
     public PollRequestService(OctopiServer octopiServer, OctoPrintHandler octoPrintHandler) {
         requestService = new HttpRequestService(octopiServer);
         this.octoPrintHandler = octoPrintHandler;
-        // this.channelTypeProvider = channelTypeProvider;
     }
 
     public void addPollRequest(Channel channel) {
@@ -58,19 +56,12 @@ public class PollRequestService {
             Channel channel = entry.getValue();
             String acceptedItemType = channel.getAcceptedItemType();
 
-            // System.out
-            // .printf("channelId: %1$s with type: %2$s%n", channel.getUID().getId(),
-            // Objects.requireNonNull(channelTypeProvider
-            // .getChannelType(Objects.requireNonNull(channel.getChannelTypeUID()), null))
-            // .getItemType());
-            // if (acceptedItemType == null) {
-            // acceptedItemType = Objects
-            // .requireNonNull(channelTypeProvider
-            // .getChannelType(Objects.requireNonNull(channel.getChannelTypeUID()), null))
-            // .getItemType();
-            // }
+            String route = channel.getProperties().get("route");
+            if (route == null) {
+                logger.error("{} has no jsonKeys as parameter value of route", channelID);
+            }
 
-            ContentResponse res = requestService.getRequest(channel.getProperties().get("route"));
+            ContentResponse res = requestService.getRequest(route);
             if (res.getStatus() == 200) {
                 JsonObject json = JsonParser.parseString(res.getContentAsString()).getAsJsonObject();
                 var jsonKeys = channel.getProperties().get("poll");
