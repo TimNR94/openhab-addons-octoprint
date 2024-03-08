@@ -13,19 +13,17 @@
 
 package org.openhab.binding.octoprint.internal.services;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.openhab.binding.octoprint.internal.OctoPrintHandler;
 import org.openhab.binding.octoprint.internal.models.OctopiServer;
-import org.openhab.binding.octoprint.internal.models.PollRequestInformation;
+import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.StringType;
-import org.openhab.core.types.State;
+import org.openhab.core.thing.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -40,35 +38,68 @@ public class PollRequestService {
 
     final HttpRequestService requestService;
     final OctoPrintHandler octoPrintHandler;
-    HashMap<String, PollRequestInformation> requests = new HashMap<>();
+    // final OctoPrintChannelTypeProvider channelTypeProvider;
+    HashMap<String, Channel> requests = new HashMap<>();
 
     public PollRequestService(OctopiServer octopiServer, OctoPrintHandler octoPrintHandler) {
         requestService = new HttpRequestService(octopiServer);
         this.octoPrintHandler = octoPrintHandler;
+        // this.channelTypeProvider = channelTypeProvider;
     }
 
-    public void addPollRequest(String channelUID, String route, ArrayList<String> jsonKey, State type) {
-        requests.putIfAbsent(channelUID, new PollRequestInformation(channelUID, route, jsonKey, type));
-        logger.debug("added {} into poll requests as: [{}, {}, {}, {}]", channelUID, channelUID, route, jsonKey,
-                type.toString());
+    public void addPollRequest(Channel channel) {
+        requests.putIfAbsent(channel.getUID().getId(), channel);
+        logger.debug("added {} into poll requests as: [{}, {}]", channel.getUID(), channel.getUID(), channel);
     }
 
     public void poll() {
-        Gson gson = new Gson();
         for (var entry : requests.entrySet()) {
-            String channelUID = entry.getKey();
-            PollRequestInformation pollRequestInformation = entry.getValue();
+            String channelID = entry.getKey();
+            Channel channel = entry.getValue();
+            String acceptedItemType = channel.getAcceptedItemType();
 
-            ContentResponse res = requestService.getRequest(pollRequestInformation.route);
+            // System.out
+            // .printf("channelId: %1$s with type: %2$s%n", channel.getUID().getId(),
+            // Objects.requireNonNull(channelTypeProvider
+            // .getChannelType(Objects.requireNonNull(channel.getChannelTypeUID()), null))
+            // .getItemType());
+            // if (acceptedItemType == null) {
+            // acceptedItemType = Objects
+            // .requireNonNull(channelTypeProvider
+            // .getChannelType(Objects.requireNonNull(channel.getChannelTypeUID()), null))
+            // .getItemType();
+            // }
+
+            ContentResponse res = requestService.getRequest(channel.getProperties().get("route"));
             if (res.getStatus() == 200) {
                 JsonObject json = JsonParser.parseString(res.getContentAsString()).getAsJsonObject();
+                var jsonKeys = channel.getProperties().get("poll");
+                if (jsonKeys.isEmpty()) {
+                    logger.error("{} has no jsonKeys as parameter value of poll", channelID);
+                    continue;
+                }
+                String[] jsonKeyArray = jsonKeys.split(",");
+
                 final JsonElement[] updatedValue = new JsonElement[1];
-                pollRequestInformation.jsonKey.forEach(key -> {
-                    updatedValue[0] = json.get(key);
-                });
-                if (pollRequestInformation.type instanceof StringType) {
-                    octoPrintHandler.updateChannel(channelUID, StringType.valueOf(updatedValue[0].getAsString()));
-                    logger.debug("Updated Channel {} to state {}", channelUID, updatedValue[0].getAsString());
+                updatedValue[0] = json;
+                for (String s : jsonKeyArray) {
+                    updatedValue[0] = updatedValue[0].getAsJsonObject().get(s.strip());
+                    System.out.printf("%1$s: %2$s%n%n", s, updatedValue[0]);
+                }
+                if (Objects.equals(acceptedItemType, "String")) {
+                    if (updatedValue[0] == null || updatedValue[0].isJsonNull()) {
+                        octoPrintHandler.updateChannel(channelID, StringType.valueOf("n.A."));
+                    } else {
+                        octoPrintHandler.updateChannel(channelID, StringType.valueOf(updatedValue[0].getAsString()));
+                        logger.debug("Updated Channel {} to state {}", channelID, updatedValue[0].getAsString());
+                    }
+                } else if (Objects.equals(acceptedItemType, "Number")) {
+                    if (updatedValue[0] == null || updatedValue[0].isJsonNull()) {
+                        octoPrintHandler.updateChannel(channelID, DecimalType.valueOf("0.0"));
+                    } else {
+                        octoPrintHandler.updateChannel(channelID, DecimalType.valueOf(updatedValue[0].getAsString()));
+                        logger.debug("Updated Channel {} to state {}", channelID, updatedValue[0].getAsString());
+                    }
                 }
             }
         }

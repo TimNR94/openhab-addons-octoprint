@@ -15,10 +15,14 @@
 		<label>OctoPrint Binding Thing</label>
 		<description>Binding for connection of a 3D printer via OctoPrint</description>
 
-		<channel-groups>
-			<channel-group id="server_information" typeId="serverInformation"/>
-			<channel-group id="tool_temperatures" typeId="toolTemperatures"/>
-		</channel-groups>
+		<channels>
+			<channel id="server_version" typeId="serverVersion">
+				<properties>
+					<property name="poll">version</property>
+					<property name="route">api/server</property>
+				</properties>
+			</channel>
+		</channels>
 
 		<config-description>
 			<parameter name="ip" type="text" required="true">
@@ -64,77 +68,77 @@
 		</config-description>
 	</thing-type>
 
-	<channel-type id="actualPrinterToolTemp">
-		<item-type>Number</item-type>
-		<label>Actual Tool Temperature</label>
-		<description>Actual temperature of the printer tool</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="true"/>
-	</channel-type>
+	<!-- <channel-type id="actualPrinterToolTemp"> -->
+	<!-- <item-type>String</item-type> -->
+	<!-- <label>Actual Tool Temperature</label> -->
+	<!-- <description>Actual temperature of the printer tool</description> -->
+	<!-- <category>Temperature</category> -->
+	<!-- <state pattern="%.1f °C" readOnly="true"/> -->
+	<!-- </channel-type> -->
 
-	<channel-type id="targetPrinterToolTemp">
-		<item-type>Number</item-type>
-		<label>Target Tool Temperature</label>
-		<description>Target temperature of the printer tool</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
-	</channel-type>
+	<!-- <channel-type id="targetPrinterToolTemp"> -->
+	<!-- <item-type>Number</item-type> -->
+	<!-- <label>Target Tool Temperature</label> -->
+	<!-- <description>Target temperature of the printer tool</description> -->
+	<!-- <category>Temperature</category> -->
+	<!-- <state pattern="%.1f °C" readOnly="false"/> -->
+	<!-- </channel-type> -->
 
-	<channel-type id="offsetPrinterToolTemp">
-		<item-type>Number</item-type>
-		<label>Tool Temperature Offset</label>
-		<description>Temperature offset of the printer tool</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
-	</channel-type>
+	<!-- <channel-type id="offsetPrinterToolTemp"> -->
+	<!-- <item-type>Number</item-type> -->
+	<!-- <label>Tool Temperature Offset</label> -->
+	<!-- <description>Temperature offset of the printer tool</description> -->
+	<!-- <category>Temperature</category> -->
+	<!-- <state pattern="%.1f °C" readOnly="false"/> -->
+	<!-- </channel-type> -->
 
-	<channel-type id="actualPrinterBedTemp">
-		<item-type>Number</item-type>
-		<label>Actual Bed Temperature</label>
-		<description>Actual temperature of the printer bed</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
-	</channel-type>
+	<!-- <channel-type id="actualPrinterBedTemp"> -->
+	<!-- <item-type>Number</item-type> -->
+	<!-- <label>Actual Bed Temperature</label> -->
+	<!-- <description>Actual temperature of the printer bed</description> -->
+	<!-- <category>Temperature</category> -->
+	<!-- <state pattern="%.1f °C" readOnly="false"/> -->
+	<!-- </channel-type> -->
 
-	<channel-type id="targetPrinterBedTemp">
-		<item-type>Number</item-type>
-		<label>Target Bed Temperature</label>
-		<description>Target temperature of the printer bed</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
-	</channel-type>
+	<!-- <channel-type id="targetPrinterBedTemp"> -->
+	<!-- <item-type>Number</item-type> -->
+	<!-- <label>Target Bed Temperature</label> -->
+	<!-- <description>Target temperature of the printer bed</description> -->
+	<!-- <category>Temperature</category> -->
+	<!-- <state pattern="%.1f °C" readOnly="false"/> -->
+	<!-- </channel-type> -->
 
-	<channel-type id="offsetPrinterBedTemp">
-		<item-type>Number</item-type>
-		<label>Bed Temperature Offset</label>
-		<description>Temperature offset of the printer bed</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
-	</channel-type>
+	<!-- <channel-type id="offsetPrinterBedTemp"> -->
+	<!-- <item-type>Number</item-type> -->
+	<!-- <label>Bed Temperature Offset</label> -->
+	<!-- <description>Temperature offset of the printer bed</description> -->
+	<!-- <category>Temperature</category> -->
+	<!-- <state pattern="%.1f °C" readOnly="false"/> -->
+	<!-- </channel-type> -->
 
-	<channel-type id="actualPrinterChamberTemp">
-		<item-type>Number</item-type>
-		<label>Actual Chamber Temperature</label>
-		<description>Actual temperature of the printer chamber</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
-	</channel-type>
+	<!-- <channel-type id="actualPrinterChamberTemp"> -->
+	<!-- <item-type>Number</item-type> -->
+	<!-- <label>Actual Chamber Temperature</label> -->
+	<!-- <description>Actual temperature of the printer chamber</description> -->
+	<!-- <category>Temperature</category> -->
+	<!-- <state pattern="%.1f °C" readOnly="false"/> -->
+	<!-- </channel-type> -->
 
-	<channel-type id="targetPrinterChamberTemp">
-		<item-type>Number</item-type>
-		<label>Target Chamber Temperature</label>
-		<description>Target temperature of the printer chamber</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
-	</channel-type>
+	<!-- <channel-type id="targetPrinterChamberTemp"> -->
+	<!-- <item-type>Number</item-type> -->
+	<!-- <label>Target Chamber Temperature</label> -->
+	<!-- <description>Target temperature of the printer chamber</description> -->
+	<!-- <category>Temperature</category> -->
+	<!-- <state pattern="%.1f °C" readOnly="false"/> -->
+	<!-- </channel-type> -->
 
-	<channel-type id="offsetPrinterChamberTemp">
-		<item-type>Number</item-type>
-		<label>Chamber Temperature Offset</label>
-		<description>Temperature offset of the printer chamber</description>
-		<category>Temperature</category>
-		<state pattern="%.1f °C" readOnly="false"/>
-	</channel-type>
+	<!-- <channel-type id="offsetPrinterChamberTemp"> -->
+	<!-- <item-type>Number</item-type> -->
+	<!-- <label>Chamber Temperature Offset</label> -->
+	<!-- <description>Temperature offset of the printer chamber</description> -->
+	<!-- <category>Temperature</category> -->
+	<!-- <state pattern="%.1f °C" readOnly="false"/> -->
+	<!-- </channel-type> -->
 
 	<channel-type id="serverVersion">
 		<item-type>String</item-type>
@@ -142,27 +146,5 @@
 		<description>Version of the OctoPrint server</description>
 		<state readOnly="true"/>
 	</channel-type>
-
-	<channel-group-type id="serverInformation">
-		<label>Server Information</label>
-		<description>Basic information about the Server.</description>
-		<category>String</category>
-		<channels>
-			<channel id="server_version" typeId="serverVersion"/>
-		</channels>
-	</channel-group-type>
-
-	<channel-group-type id="toolTemperatures">
-		<label>Tool Temperatures</label>
-		<description>Temperature readings from the Printer. The Channels are automatically configured after information from
-			the server
-		</description>
-		<category>TEMPERATURE</category>
-		<!-- <channels> -->
-		<!-- <channel id="tool_temp_actual" typeId="printerToolTempActual"/> -->
-		<!-- <channel id="tool_temp_target" typeId="printerToolTempTarget"/> -->
-		<!-- <channel id="tool_temp_offset" typeId="printerToolTempOffset"/> -->
-		<!-- </channels> -->
-	</channel-group-type>
 
 </thing:thing-descriptions>

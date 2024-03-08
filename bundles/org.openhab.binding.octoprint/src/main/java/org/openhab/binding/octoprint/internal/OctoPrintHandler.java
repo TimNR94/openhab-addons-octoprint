@@ -16,6 +16,7 @@ import static org.openhab.binding.octoprint.internal.OctoPrintBindingConstants.*
 
 import java.util.*;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -290,52 +291,57 @@ public class OctoPrintHandler extends BaseThingHandler {
         pollRequestService.poll();
     }
 
-    protected Map.Entry<String, ChannelType> channelEntry(String prefix, String channelName) {
+    protected Map.Entry<String, ChannelType> channelEntry(String prefix, String channelName, String description) {
         String channelTypeId = String.format("%1$s%2$s", prefix.toLowerCase(), channelName);
         String label = String.format("%1$s Tool Temperature", prefix);
         ChannelTypeUID channelTypeUID = new ChannelTypeUID(THING_TYPE_OCTOPRINT.getBindingId(), channelTypeId);
 
         if (channelTypeProvider.hasChannelType(channelTypeUID)) {
-            System.out.printf("found ChannelType: %1$s", channelTypeUID);
             return Map.entry(prefix.toLowerCase(),
                     Objects.requireNonNull(channelTypeProvider.getChannelType(channelTypeUID, null)));
         }
 
         StateDescriptionFragment state = StateDescriptionFragmentBuilder.create().withPattern("%.1f °C")
                 .withReadOnly(true).build();
-        StateChannelTypeBuilder stateChannelTypeBuilder = ChannelTypeBuilder.state(channelTypeUID, "label", "Number");
+        StateChannelTypeBuilder stateChannelTypeBuilder = ChannelTypeBuilder.state(channelTypeUID, label, "Number")
+                .withCategory("Temperature").withStateDescriptionFragment(state).withDescription(description);
         ChannelType channelType = stateChannelTypeBuilder.build();
+        channelTypeProvider.addChannelType(channelType);
         return Map.entry(prefix.toLowerCase(), channelType);
     }
 
     protected void addTemperatureChannels(ThingBuilder thingBuilder) {
-        Map<String, ChannelType> channelTypes = Map.ofEntries(channelEntry("Actual", "PrinterToolTemp"),
-                channelEntry("Target", "PrinterToolTemp"), channelEntry("Offset", "PrinterToolTemp"));
+        Map<String, ChannelType> channelTypes = Map.ofEntries(
+                channelEntry("Actual", "PrinterToolTemp", "Actual temperature of the printer tool"),
+                channelEntry("Target", "PrinterToolTemp", "Target temperature of the printer tool"),
+                channelEntry("Offset", "PrinterToolTemp", "Temperature offset of the printer tool"));
         // add tool temperature channels
         ContentResponse res = httpRequestService.getRequest("api/printer/tool");
 
-        createTemperatureChannels(thingBuilder, res, channelTypes);
+        createTemperatureChannels(thingBuilder, res, channelTypes, "api/printer/tool");
 
         // add bed temperature channel
-        channelTypes = Map.ofEntries(channelEntry("Actual", "PrinterBedTemp"), channelEntry("Target", "PrinterBedTemp"),
-                channelEntry("Offset", "PrinterBedTemp"));
+        channelTypes = Map.ofEntries(channelEntry("Actual", "PrinterBedTemp", "Actual temperature of the printer bed"),
+                channelEntry("Target", "PrinterBedTemp", "Target temperature of the printer bed"),
+                channelEntry("Offset", "PrinterBedTemp", "Temperature offset of the printer tool"));
 
         res = httpRequestService.getRequest("api/printer/bed");
-        createTemperatureChannels(thingBuilder, res, channelTypes);
+        createTemperatureChannels(thingBuilder, res, channelTypes, "api/printer/bed");
 
         // add chamber temperature channel
-        channelTypes = Map.ofEntries(channelEntry("Actual", "PrinterChamberTemp"),
-                channelEntry("Target", "PrinterChamberTemp"), channelEntry("Offset", "PrinterChamberTemp"));
+        channelTypes = Map.ofEntries(
+                channelEntry("Actual", "PrinterChamberTemp", "Actual temperature of the printer chamber"),
+                channelEntry("Target", "PrinterChamberTemp", "Target temperature of the printer chamber"),
+                channelEntry("Offset", "PrinterChamberTemp", "Temperature offset of the printer chamber"));
 
         res = httpRequestService.getRequest("api/printer/chamber");
-        createTemperatureChannels(thingBuilder, res, channelTypes);
+        createTemperatureChannels(thingBuilder, res, channelTypes, "api/printer/chamber");
     }
 
     protected void createTemperatureChannels(ThingBuilder thingBuilder, ContentResponse res,
-            Map<String, ChannelType> channelTypes) {
+            Map<String, ChannelType> channelTypes, String route) {
         if (res.getStatus() == 200) {
             JsonObject json = JsonParser.parseString(res.getContentAsString()).getAsJsonObject();
-            System.out.println(json);
             json.asMap().forEach((jsonKey, jsonValue) -> {
                 logger.debug("jsonKey: {}", jsonKey);
                 JsonObject temps = jsonValue.getAsJsonObject();
@@ -346,11 +352,13 @@ public class OctoPrintHandler extends BaseThingHandler {
                     ChannelUID channelUID = new ChannelUID(thing.getUID(), channelID);
                     Map<String, String> properties = new HashMap<>();
                     properties.put("tool_name", jsonKey);
-                    String jsonkeys = String.format("%1$s,%2$s", jsonKey, key);
-                    properties.put("jsonKeys", jsonkeys);
+                    String jsonKeys = String.format("%1$s,%2$s", jsonKey, key);
+                    properties.put("poll", jsonKeys);
+                    properties.put("route", route);
 
-                    ChannelBuilder channelBuilder = ChannelBuilder.create(channelUID)
-                            .withType(channelTypes.get(key).getUID()).withProperties(properties);
+                    ChannelType channelType = channelTypes.get(key);
+                    ChannelBuilder channelBuilder = ChannelBuilder.create(channelUID).withType(channelType.getUID())
+                            .withProperties(properties).withAcceptedItemType(channelType.getItemType());
 
                     Channel channel = channelBuilder.build();
                     if (thing.getChannel(channelUID) == null) {
@@ -379,17 +387,11 @@ public class OctoPrintHandler extends BaseThingHandler {
         addTemperatureChannels(thingBuilder);
         updateThing(thingBuilder.build());
 
-        // OwnChannelConfig channelConfig = new OwnChannelConfig(this.getThing().getUID(), "Autogen",
-        // "printer_tool_temp_actual", "autolabel");
-        // addChannelIfMissingAndEnable(thingBuilder, channelConfig);
-        //
-        // updateThing(thingBuilder.build());
-
-        // pollRequestService = new PollRequestService(octopiServer, this);
-        // pollRequestService.addPollRequest(SERVER_VERSION, "api/server", new ArrayList<String>(List.of("version")),
-        // new StringType());
-        // pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval,
-        // TimeUnit.SECONDS);
+        pollRequestService = new PollRequestService(octopiServer, this);
+        this.getThing().getChannels().stream()
+                .filter(c -> c.getProperties().containsKey("poll") && c.getProperties().containsKey("route"))
+                .forEach(c -> pollRequestService.addPollRequest(c));
+        pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval, TimeUnit.SECONDS);
 
         // TODO: Initialize the handler.
         // The framework requires you to return from this method quickly, i.e. any network access must be done in

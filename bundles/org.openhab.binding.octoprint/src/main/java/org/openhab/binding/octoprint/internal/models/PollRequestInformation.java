@@ -13,9 +13,7 @@
 
 package org.openhab.binding.octoprint.internal.models;
 
-import java.util.ArrayList;
-
-import org.openhab.core.types.State;
+import org.openhab.core.thing.Channel;
 
 /**
  * The {@link PollRequestInformation}.TODO
@@ -23,15 +21,11 @@ import org.openhab.core.types.State;
  * @author Jan Niklas Freisinger - Initial contribution
  */
 public class PollRequestInformation {
-    public final String channelUID;
+    public final Channel channel;
     public final String route;
-    public final ArrayList<String> jsonKey;
-    public final State type;
 
-    public PollRequestInformation(String channelUID, String route, ArrayList<String> jsonKey, State type) {
-        this.channelUID = channelUID;
+    public PollRequestInformation(Channel channel, String route) {
+        this.channel = channel;
         this.route = route;
-        this.jsonKey = jsonKey;
-        this.type = type;
     }
 }
