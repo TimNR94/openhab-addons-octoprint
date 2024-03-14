@@ -19,7 +19,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.openhab.binding.octoprint.internal.OctoPrintHandler;
-import org.openhab.binding.octoprint.internal.models.OctopiServer;
+import org.openhab.binding.octoprint.internal.models.OctoprintServer;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.thing.Channel;
@@ -31,8 +31,13 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 /**
- * The {@link PollRequestService}.TODO
- *
+ * The {@link PollRequestService} uses a {@link HttpRequestService} and a Map of {@link Channel}s
+ * to make GET requests to an octoprint server instance and update the Channel states according to the
+ * received Data.
+ * <br>
+ * The {@link Channel}s must have the following properties set:
+ *  - poll, value is a comma seperated list of json keys to the wanted data in the response body (i.e. job,file,name)
+ *  - route, value is the api endpoint the GET request is sent to (i.e. api/job)
  * @author Jan Niklas Freisinger - Initial contribution
  */
 public class PollRequestService {
@@ -42,11 +47,18 @@ public class PollRequestService {
     final OctoPrintHandler octoPrintHandler;
     HashMap<String, Channel> requests = new HashMap<>();
 
-    public PollRequestService(OctopiServer octopiServer, OctoPrintHandler octoPrintHandler) {
-        requestService = new HttpRequestService(octopiServer);
+    public PollRequestService(OctoprintServer octoprintServer, OctoPrintHandler octoPrintHandler) {
+        requestService = new HttpRequestService(octoprintServer);
         this.octoPrintHandler = octoPrintHandler;
     }
 
+    /**
+     * Adds a {@link Channel} to the Collection of Channels that is iterated over in every poll.
+     *
+     * @param channel  must have the following properties set:
+     *  <br>  - poll, value is a comma seperated list of json keys to the wanted data in the response body (i.e. job,file,name)
+     *  <br>  - route, value is the api endpoint the GET request is sent to (i.e. api/job)
+     */
     public void addPollRequest(Channel channel) {
         requests.putIfAbsent(channel.getUID().getId(), channel);
         logger.debug("added {} into poll requests as: [{}, {}]", channel.getUID(), channel.getUID(), channel);
@@ -62,7 +74,7 @@ public class PollRequestService {
             if (route == null) {
                 logger.error("{} has no jsonKeys as parameter value of route", channelID);
             }
-            logger.warn("================ polling {} ({}) ================", channelID, route);
+            logger.debug("================ polling {} ({}) ================", channelID, route);
 
             ContentResponse res = requestService.getRequest(route);
             if (res.getStatus() == 200) {
@@ -81,7 +93,7 @@ public class PollRequestService {
                 updatedValue[0] = json;
                 for (String s : jsonKeyArray) {
                     updatedValue[0] = updatedValue[0].getAsJsonObject().get(s.strip());
-                    logger.warn("{}: {}", s, updatedValue[0]);
+                    logger.debug("{}: {}", s, updatedValue[0]);
                 }
                 if (Objects.equals(acceptedItemType, "String")) {
                     if (updatedValue[0] == null || updatedValue[0].isJsonNull()) {

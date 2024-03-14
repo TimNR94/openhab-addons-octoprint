@@ -24,7 +24,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Response;
-import org.openhab.binding.octoprint.internal.models.OctopiServer;
+import org.openhab.binding.octoprint.internal.models.OctoprintServer;
 import org.openhab.binding.octoprint.internal.providers.OctoPrintChannelTypeProvider;
 import org.openhab.binding.octoprint.internal.services.HttpRequestService;
 import org.openhab.binding.octoprint.internal.services.PollRequestService;
@@ -56,7 +56,7 @@ public class OctoPrintHandler extends BaseThingHandler {
     private final Logger logger = LoggerFactory.getLogger(OctoPrintHandler.class);
     private final OctoPrintChannelTypeProvider channelTypeProvider;
     private @Nullable PollRequestService pollRequestService;
-    private @Nullable OctopiServer octopiServer;
+    private @Nullable OctoprintServer octoprintServer;
     private @Nullable ScheduledFuture<?> pollingJob;
     private String selectedTool = "0";
     private @Nullable HttpRequestService httpRequestService;
@@ -299,6 +299,15 @@ public class OctoPrintHandler extends BaseThingHandler {
         }
     }
 
+    /**
+     * Looks up a ChannelType in the {@link OctoPrintChannelTypeProvider} with the given parameters or creates
+     * a new one if not present
+     *
+     * @param prefix a prefix for the Channel name (for example actual, target)
+     * @param channelName a channel name
+     * @param description A description of what the ChannelType is for
+     * @return a Map entry of channelTypeID with corresponding ChannelType
+     */
     protected Map.Entry<String, ChannelType> channelEntry(String prefix, String channelName, String description) {
         String channelTypeId = String.format("%1$s%2$s", prefix.toLowerCase(), channelName);
         String label = String.format("%1$s Tool Temperature", prefix);
@@ -318,6 +327,11 @@ public class OctoPrintHandler extends BaseThingHandler {
         return Map.entry(prefix.toLowerCase(), channelType);
     }
 
+    /**
+     * Makes HTTP-Requests to determine which temperature channels are needed and creates them.
+     *
+     * @param thingBuilder the {@link ThingBuilder} the channels are added to
+     */
     protected void addTemperatureChannels(ThingBuilder thingBuilder) {
         assert httpRequestService != null;
         Map<String, ChannelType> channelTypes = Map.ofEntries(
@@ -360,6 +374,14 @@ public class OctoPrintHandler extends BaseThingHandler {
         createTemperatureChannels(thingBuilder, Objects.requireNonNull(res), channelTypes, "api/printer/chamber");
     }
 
+    /**
+     * Creates the needed temperature Channels as determined by the {@link ContentResponse} of the
+     * HTTP-Request that requested the needed information.
+     * @param thingBuilder the {@link ThingBuilder} the channels are added to
+     * @param res the {@link ContentResponse} that contains the needed information
+     * @param channelTypes a map of channel types for the channels to be created
+     * @param route the route the channels status information is to be requested from
+     */
     protected void createTemperatureChannels(ThingBuilder thingBuilder, ContentResponse res,
             Map<String, ChannelType> channelTypes, String route) {
         if (res.getStatus() == 200) {
@@ -418,15 +440,15 @@ public class OctoPrintHandler extends BaseThingHandler {
         // Example for background initialization:
         scheduler.execute(() -> {
             boolean thingReachable = true;
-            octopiServer = new OctopiServer(config.ip, config.apiKey, config.username);
-            httpRequestService = new HttpRequestService(octopiServer);
-            logger.debug("Created {}", octopiServer);
+            octoprintServer = new OctoprintServer(config.ip, config.apiKey, config.username);
+            httpRequestService = new HttpRequestService(octoprintServer);
+            logger.debug("Created {}", octoprintServer);
 
             ThingBuilder thingBuilder = editThing();
             addTemperatureChannels(thingBuilder);
             updateThing(thingBuilder.build());
 
-            pollRequestService = new PollRequestService(octopiServer, this);
+            pollRequestService = new PollRequestService(octoprintServer, this);
             this.getThing().getChannels().stream()
                     .filter(c -> c.getProperties().containsKey("poll") && c.getProperties().containsKey("route"))
                     .forEach(c -> pollRequestService.addPollRequest(c));
