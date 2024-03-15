@@ -1,94 +1,70 @@
 # OctoPrint Binding
 
-_Give some details about what this binding is meant for - a protocol, system, specific device._
-
-_If possible, provide some resources like pictures (only PNG is supported currently), a video, etc. to give an impression of what can be done with this binding._
-_You can place such resources into a `doc` folder next to this README.md._
-
-_Put each sentence in a separate line to improve readability of diffs._
+This binding can be used for connecting the openHAB system to a 3D printer via an [octoprint](https://octoprint.org/) server.
+It provides functionalities to monitor sensor values like temperatures and print job progress, to control the printer's actuators and to manage much more.
+All in all it provides access to OctoPrint's functionalities via the openHAB system.
 
 ## Supported Things
 
-_Please describe the different supported things / devices including their ThingTypeUID within this section._
-_Which different types are supported, which models were tested etc.?_
-_Note that it is planned to generate some part of this based on the XML files within ```src/main/resources/OH-INF/thing``` of your binding._
+The binding is tested with OctoPi, a Raspberry Pi distribution of OctoPrint, installed as operating system on a Raspberry Pi 3B.
+As 3D printer, a ___________ was used, to test the implementation.
+Further testing with other versions of OctoPrint or different printers have not been made.
 
-- `bridge`: Short description of the Bridge, if any
-- `sample`: Short description of the Thing with the ThingTypeUID `sample`
-
-## Discovery
-
-_Describe the available auto-discovery features here._
-_Mention for what it works and what needs to be kept in mind when using it._
-
-## Binding Configuration
-
-_If your binding requires or supports general configuration settings, please create a folder ```cfg``` and place the configuration file ```<bindingId>.cfg``` inside it._
-_In this section, you should link to this file and provide some information about the options._
-_The file could e.g. look like:_
-
-```
-# Configuration for the OctoPrint Binding
-#
-# Default secret key for the pairing of the OctoPrint Thing.
-# It has to be between 10-40 (alphanumeric) characters.
-# This may be changed by the user for security reasons.
-secret=openHABSecret
-```
-
-_Note that it is planned to generate some part of this based on the information that is available within ```src/main/resources/OH-INF/binding``` of your binding._
-
-_If your binding does not offer any generic configurations, you can remove this section completely._
 
 ## Thing Configuration
 
-_Describe what is needed to manually configure a thing, either through the UI or via a thing-file._
-_This should be mainly about its mandatory and optional configuration parameters._
+To manually configure a OctoPrint thing, at least you need the ip of the server and an api key to access the server via a secure connection.
+All other configuration parameters are optional and can be used for personalization.
 
-_Note that it is planned to generate some part of this based on the XML files within ```src/main/resources/OH-INF/thing``` of your binding._
+### OctoPrint Thing Configuration
 
-### `sample` Thing Configuration
-
-| Name            | Type    | Description                           | Default | Required | Advanced |
-|-----------------|---------|---------------------------------------|---------|----------|----------|
-| hostname        | text    | Hostname or IP address of the device  | N/A     | yes      | no       |
-| password        | text    | Password to access the device         | N/A     | yes      | no       |
-| refreshInterval | integer | Interval the device is polled in sec. | 600     | no       | yes      |
+| Name            | Type    | Description                                | Default | Required | Advanced |
+|-----------------|---------|--------------------------------------------|---------|----------|----------|
+| ip              | text    | Hostname or IP address of the device       | N/A     | yes      | no       |
+| password        | text    | Password to access the device              | N/A     | no       | no       |
+| apiKey          | text    | APIKey for secure connection to the server | N/A     | yes      | no       |
+| serialPort      | text    | The printer's serial port                  | N/A     | no       | yes      |
+| baudRate        | integer | The printer's baud rate                    | 115200  | no       | yes      |
+| printerProfile  | integer | The printer's profile                      | N/A     | no       | yes      |
+| refreshInterval | integer | Interval the device is polled in sec.      | 10      | no       | yes      |
 
 ## Channels
 
-_Here you should provide information about available channel types, what their meaning is and how they can be used._
-
-_Note that it is planned to generate some part of this based on the XML files within ```src/main/resources/OH-INF/thing``` of your binding._
-
-| Channel | Type   | Read/Write | Description                 |
-|---------|--------|------------|-----------------------------|
-| control | Switch | RW         | This is the control channel |
-
-## Full Example
-
-_Provide a full usage example based on textual configuration files._
-_*.things, *.items examples are mandatory as textual configuration is well used by many users._
-_*.sitemap examples are optional._
-
-### Thing Configuration
-
-```java
-Example thing configuration goes here.
-```
-### Item Configuration
-
-```java
-Example item configuration goes here.
-```
-
-### Sitemap Configuration
-
-```perl
-Optional Sitemap configuration goes here.
-Remove this section, if not needed.
-```
-
-## Any custom content here!
-
-_Feel free to add additional sections for whatever you think should also be mentioned about your binding!_
+| Channel                   | Type     | Read/Write | Description                                         |
+|---------------------------|----------|------------|-----------------------------------------------------|
+| serverVersion             | String   | R          | Version of the OctoPrint server                     |
+| serverSafeModeState       | String   | R          | Safe mode state of the OctoPrint server             |
+| serverConnectionState     | String   | R          | Connection state of the OctoPrint server            |
+| printJobState             | String   | R          | State of the current print job                      |
+| printJobFileName          | String   | R          | File name of the current print job                  |
+| printJobFileOrigin        | String   | R          | File path of the current print job                  |
+| printJobFileSize          | Number   | R          | File size of the current print job                  |
+| printJobFileDate          | DateTime | R          | Last edit of the current print job file             |
+| printJobStart             | String   | RW         | Start the print job of the selected file            |
+| printJobCancel            | String   | RW         | Cancel the current print job                        |
+| printJobPause             | String   | RW         | Pause/resume the current print job                  |
+| printJobRestart           | String   | RW         | Start the print job of the selected file            |
+| printJobEstPrintTime      | Number   | R          | Estimated print time of the current print job       |
+| printJobProgress          | Number   | R          | Percentage of completion of current print job       |
+| printJobCurrentPrintTime  | Number   | R          | Elapsed print time of the current print job         |
+| printJobEstTimeLeft       | Number   | R          | Estimated print time left for the current print job |
+| printerState              | String   | R          | State of the printer                                |
+| printerJogX               | Number   | RW         | Move printer head in x axis direction               |
+| printerJogY               | Number   | RW         | Move printer head in y axis direction               |
+| printerJogZ               | Number   | RW         | Move printer head in z axis direction               |
+| printerHomingX            | String   | RW         | Homing of the printer's x axis                      |
+| printerHomingY            | String   | RW         | Homing of the printer's y axis                      |
+| printerHomingZ            | String   | RW         | Homing of the printer's z axis                      |
+| printerHomingXYZ          | String   | RW         | Homing of the printer's x, y and z axis             |
+| printerToolSelect         | Number   | RW         | Select a printer tool                               |
+| printerToolFlowrate       | Number   | RW         | Apply a printer tool flowrate                       |
+| printerToolTempActual     | Number   | R          | Actual temperature of the printer tool              |
+| printerToolTempTarget     | Number   | RW         | Target temperature of the printer tool              |
+| printerToolTempOffset     | Number   | RW         | Temperature offset of the printer tool              |
+| printerBedTempActual      | Number   | R          | Actual temperature of the printer bed               |
+| printerBedTempTarget      | Number   | RW         | Target temperature of the printer bed               |
+| printerBedTempOffset      | Number   | RW         | Temperature offset of the printer bed               |
+| printerChamberTempActual  | Number   | R          | Actual temperature of the printer chamber           |
+| printerChamberTempTarget  | Number   | RW         | Target temperature of the printer chamber           |
+| printerChamberTempOffset  | Number   | RW         | Temperature offset of the printer chamber           |
+| SDCardState               | Switch   | R          | State of the printers SD card                       |
