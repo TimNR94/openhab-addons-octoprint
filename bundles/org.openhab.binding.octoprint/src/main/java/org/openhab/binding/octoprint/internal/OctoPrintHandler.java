@@ -47,19 +47,25 @@ import com.google.gson.JsonParser;
 
 /**
  * The {@link OctoPrintHandler} is responsible for handling commands, which are
- * sent to one of the channels.
+ * sent to the connected thing from the framework via one of the channels or updating
+ * state changes, which are sent to the framework from the thing via one of the channels.
  *
- * @author Tim-Niclas Ruppert - Initial contribution
+ * @author Tim-Niclas Ruppert, Jan Freisinger - Initial contribution
  */
 @NonNullByDefault
 public class OctoPrintHandler extends BaseThingHandler {
+    // necessary services
     private final Logger logger = LoggerFactory.getLogger(OctoPrintHandler.class);
     private final OctoPrintChannelTypeProvider channelTypeProvider;
     private @Nullable PollRequestService pollRequestService;
     private @Nullable OctopiServer octopiServer;
     private @Nullable ScheduledFuture<?> pollingJob;
-    private String selectedTool = "0";
     private @Nullable HttpRequestService httpRequestService;
+
+    // because a printer can have more than one tool,
+    // the tool that will be addressed, has to be stored
+    private String selectedTool = "0";
+    // instance of configuration to access the configuration parameters
     private @Nullable OctoPrintConfiguration config;
 
     public OctoPrintHandler(Thing thing, OctoPrintChannelTypeProvider octoPrintChannelTypeProvider) {
@@ -67,9 +73,18 @@ public class OctoPrintHandler extends BaseThingHandler {
         channelTypeProvider = octoPrintChannelTypeProvider;
     }
 
+    /**
+     * This method handles commands, send from the framework to the thing via a specific channel,
+     * builds a JSON-String and sends a http post request to the OctoPrint server to execute the
+     * command. In case of failure, a warning will be logged.
+     * @param channelUID UID of the channel, that transmits the command; provides the channelID
+     * @param command Command, that is sent via the channel
+     */
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
+        // retrieve the channelID, set in the OctoPrintBindingConstants
         String channelId = channelUID.getId();
+        // search for matching case of channelID, build JSON object and send http post request
         switch (channelId) {
             case PRINT_JOB_START:
                 if (command instanceof StringType) {
