@@ -17,26 +17,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link OctopiServer} class defines the abstraction of the octoprint server.
+ * The {@link OctoprintServer} class defines the abstraction of the octoprint server.
  *
+ * It contains the necessary Information to connect to an Octoprint-Server instance.
  * @author Jan Niklas Freisinger - Initial contribution
  */
-public class OctopiServer {
-    private final Logger logger = LoggerFactory.getLogger(OctopiServer.class);
-    public final String ip;
+public class OctoprintServer {
+    private final Logger logger = LoggerFactory.getLogger(OctoprintServer.class);
+    public final String uri;
     public final String apiKey;
     public final String userName;
     String password;
 
-    public OctopiServer(String ip, String apiKey, String userName) {
-        this.ip = ip;
+    public OctoprintServer(String uri, String apiKey, String userName) {
+        this.uri = uri;
         this.apiKey = apiKey;
         this.userName = userName;
-    }
-
-    @Override
-    public String toString() {
-        return "OctopiServer{" + "ip='" + ip + '\'' + ", apiKey='" + apiKey + '\'' + ", userName='" + userName + '\''
-                + ", password='" + password + '\'' + '}';
     }
 }

@@ -23,23 +23,23 @@ import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
-import org.openhab.binding.octoprint.internal.models.OctopiServer;
+import org.openhab.binding.octoprint.internal.models.OctoprintServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link HttpRequestService}.TODO
+ * The {@link HttpRequestService} provides methods to send HTTP-Requests to a {@link OctoprintServer}.
  *
  * @author Jan Niklas Freisinger - Initial contribution
  */
 public class HttpRequestService {
     private final Logger logger = LoggerFactory.getLogger(HttpRequestService.class);
 
-    private final OctopiServer server;
+    private final OctoprintServer server;
     HttpClient httpClient = new HttpClient();
 
-    public HttpRequestService(OctopiServer octopiServer) {
-        server = octopiServer;
+    public HttpRequestService(OctoprintServer octoprintServer) {
+        server = octoprintServer;
         try {
             httpClient.start();
         } catch (Exception e) {
@@ -48,7 +48,7 @@ public class HttpRequestService {
     }
 
     public ContentResponse getRequest(String route) throws ExecutionException, InterruptedException, TimeoutException {
-        String uri = String.format("http://%1$s/%2$s", server.ip, route);
+        String uri = String.format("http://%1$s/%2$s", server.uri, route);
         logger.debug("uri: {}", uri);
         Request request = httpClient.newRequest(uri).header("X-Api-Key", server.apiKey).method(HttpMethod.GET);
         ContentResponse res = request.send();
@@ -57,7 +57,7 @@ public class HttpRequestService {
     }
 
     public Response postRequest(String route, String body) {
-        String uri = String.format("http://%1$s/%2$s", server.ip, route);
+        String uri = String.format("http://%1$s/%2$s", server.uri, route);
         logger.debug("uri: {}", uri);
         Request request = httpClient.newRequest(uri).header("X-Api-Key", server.apiKey)
                 .header(HttpHeader.ACCEPT, "application/json").header(HttpHeader.CONTENT_TYPE, "application/json")
