@@ -78,6 +78,7 @@ public class OctoPrintHandler extends BaseThingHandler {
      * This method handles commands, send from the framework to the thing via a specific channel,
      * builds a JSON-String and sends a http post request to the OctoPrint server to execute the
      * command. In case of failure, a warning will be logged.
+     * 
      * @param channelUID UID of the channel, that transmits the command; provides the channelID
      * @param command Command, that is sent via the channel
      */
@@ -397,6 +398,7 @@ public class OctoPrintHandler extends BaseThingHandler {
     /**
      * Creates the needed temperature Channels as determined by the {@link ContentResponse} of the
      * HTTP-Request that requested the needed information.
+     * 
      * @param thingBuilder the {@link ThingBuilder} the channels are added to
      * @param res the {@link ContentResponse} that contains the needed information
      * @param channelTypes a map of channel types for the channels to be created

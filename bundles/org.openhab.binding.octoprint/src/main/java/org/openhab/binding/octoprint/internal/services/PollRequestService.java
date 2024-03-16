@@ -36,8 +36,9 @@ import com.google.gson.JsonParser;
  * received Data.
  * <br>
  * The {@link Channel}s must have the following properties set:
- *  - poll, value is a comma seperated list of json keys to the wanted data in the response body (i.e. job,file,name)
- *  - route, value is the api endpoint the GET request is sent to (i.e. api/job)
+ * - poll, value is a comma seperated list of json keys to the wanted data in the response body (i.e. job,file,name)
+ * - route, value is the api endpoint the GET request is sent to (i.e. api/job)
+ * 
  * @author Jan Niklas Freisinger - Initial contribution
  */
 public class PollRequestService {
@@ -55,9 +56,12 @@ public class PollRequestService {
     /**
      * Adds a {@link Channel} to the Collection of Channels that is iterated over in every poll.
      *
-     * @param channel  must have the following properties set:
-     *  <br>  - poll, value is a comma seperated list of json keys to the wanted data in the response body (i.e. job,file,name)
-     *  <br>  - route, value is the api endpoint the GET request is sent to (i.e. api/job)
+     * @param channel must have the following properties set:
+     *            <br>
+     *            - poll, value is a comma seperated list of json keys to the wanted data in the response body (i.e.
+     *            job,file,name)
+     *            <br>
+     *            - route, value is the api endpoint the GET request is sent to (i.e. api/job)
      */
     public void addPollRequest(Channel channel) {
         requests.putIfAbsent(channel.getUID().getId(), channel);

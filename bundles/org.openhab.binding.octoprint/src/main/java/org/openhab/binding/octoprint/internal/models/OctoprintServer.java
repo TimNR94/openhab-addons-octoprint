@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
  * The {@link OctoprintServer} class defines the abstraction of the octoprint server.
  *
  * It contains the necessary Information to connect to an Octoprint-Server instance.
+ * 
  * @author Jan Niklas Freisinger - Initial contribution
  */
 public class OctoprintServer {
