@@ -14,51 +14,79 @@ package org.openhab.binding.octoprint.internal;
 
 import static org.openhab.binding.octoprint.internal.OctoPrintBindingConstants.*;
 
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Response;
-import org.openhab.binding.octoprint.internal.models.OctopiServer;
+import org.openhab.binding.octoprint.internal.models.OctoprintServer;
+import org.openhab.binding.octoprint.internal.providers.OctoPrintChannelTypeProvider;
 import org.openhab.binding.octoprint.internal.services.HttpRequestService;
 import org.openhab.binding.octoprint.internal.services.PollRequestService;
 import org.openhab.core.i18n.CommunicationException;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.StringType;
-import org.openhab.core.thing.ChannelUID;
-import org.openhab.core.thing.Thing;
-import org.openhab.core.thing.ThingStatus;
-import org.openhab.core.thing.ThingStatusDetail;
+import org.openhab.core.thing.*;
 import org.openhab.core.thing.binding.BaseThingHandler;
+import org.openhab.core.thing.binding.builder.ChannelBuilder;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
+import org.openhab.core.thing.type.*;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
+import org.openhab.core.types.StateDescriptionFragment;
+import org.openhab.core.types.StateDescriptionFragmentBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 /**
  * The {@link OctoPrintHandler} is responsible for handling commands, which are
- * sent to one of the channels.
+ * sent to the connected thing from the framework via one of the channels or updating
+ * state changes, which are sent to the framework from the thing via one of the channels.
  *
- * @author Tim-Niclas Ruppert - Initial contribution
+ * @author Tim-Niclas Ruppert, Jan Freisinger - Initial contribution
  */
 @NonNullByDefault
 public class OctoPrintHandler extends BaseThingHandler {
+    // necessary services
     private final Logger logger = LoggerFactory.getLogger(OctoPrintHandler.class);
+    private final OctoPrintChannelTypeProvider channelTypeProvider;
     private @Nullable PollRequestService pollRequestService;
-    private @Nullable OctopiServer octopiServer;
+    private @Nullable OctoprintServer octoprintServer;
     private @Nullable ScheduledFuture<?> pollingJob;
-    private String selectedTool = "0";
     private @Nullable HttpRequestService httpRequestService;
+
+    // because a printer can have more than one tool,
+    // the tool that will be addressed, has to be stored
+    private String selectedTool = "0";
+    // instance of configuration to access the configuration parameters
     private @Nullable OctoPrintConfiguration config;
 
-    public OctoPrintHandler(Thing thing) {
+    public OctoPrintHandler(Thing thing, OctoPrintChannelTypeProvider octoPrintChannelTypeProvider) {
         super(thing);
+        channelTypeProvider = octoPrintChannelTypeProvider;
     }
 
+    /**
+     * This method handles commands, send from the framework to the thing via a specific channel,
+     * builds a JSON-String and sends a http post request to the OctoPrint server to execute the
+     * command. In case of failure, a warning will be logged.
+     * 
+     * @param channelUID UID of the channel, that transmits the command; provides the channelID
+     * @param command Command, that is sent via the channel
+     */
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
+        // retrieve the channelID, set in the OctoPrintBindingConstants
         String channelId = channelUID.getId();
+        // search for matching case of channelID, build JSON object and send http post request
         try {
             switch (channelId) {
                 case PRINT_JOB_START:
@@ -283,7 +311,132 @@ public class OctoPrintHandler extends BaseThingHandler {
     }
 
     private void pollingCode() {
-        pollRequestService.poll();
+        assert pollRequestService != null;
+        try {
+            pollRequestService.poll();
+        } catch (ExecutionException | TimeoutException | InterruptedException e) {
+            updateStatus(ThingStatus.OFFLINE);
+            logger.error("Error: {}", e.toString());
+        }
+    }
+
+    /**
+     * Looks up a ChannelType in the {@link OctoPrintChannelTypeProvider} with the given parameters or creates
+     * a new one if not present
+     *
+     * @param prefix a prefix for the Channel name (for example actual, target)
+     * @param channelName a channel name
+     * @param description A description of what the ChannelType is for
+     * @return a Map entry of channelTypeID with corresponding ChannelType
+     */
+    protected Map.Entry<String, ChannelType> channelEntry(String prefix, String channelName, String description) {
+        String channelTypeId = String.format("%1$s%2$s", prefix.toLowerCase(), channelName);
+        String label = String.format("%1$s Tool Temperature", prefix);
+        ChannelTypeUID channelTypeUID = new ChannelTypeUID(THING_TYPE_OCTOPRINT.getBindingId(), channelTypeId);
+
+        if (channelTypeProvider.hasChannelType(channelTypeUID)) {
+            return Map.entry(prefix.toLowerCase(),
+                    Objects.requireNonNull(channelTypeProvider.getChannelType(channelTypeUID, null)));
+        }
+
+        StateDescriptionFragment state = StateDescriptionFragmentBuilder.create().withPattern("%.1f °C")
+                .withReadOnly(true).build();
+        StateChannelTypeBuilder stateChannelTypeBuilder = ChannelTypeBuilder.state(channelTypeUID, label, "Number")
+                .withCategory("Temperature").withStateDescriptionFragment(state).withDescription(description);
+        ChannelType channelType = stateChannelTypeBuilder.build();
+        channelTypeProvider.addChannelType(channelType);
+        return Map.entry(prefix.toLowerCase(), channelType);
+    }
+
+    /**
+     * Makes HTTP-Requests to determine which temperature channels are needed and creates them.
+     *
+     * @param thingBuilder the {@link ThingBuilder} the channels are added to
+     */
+    protected void addTemperatureChannels(ThingBuilder thingBuilder) {
+        assert httpRequestService != null;
+        Map<String, ChannelType> channelTypes = Map.ofEntries(
+                channelEntry("Actual", "PrinterToolTemp", "Actual temperature of the printer tool"),
+                channelEntry("Target", "PrinterToolTemp", "Target temperature of the printer tool"),
+                channelEntry("Offset", "PrinterToolTemp", "Temperature offset of the printer tool"));
+        // add tool temperature channels
+        ContentResponse res = null;
+        try {
+            res = httpRequestService.getRequest("api/printer/tool");
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            logger.error("Error: {}", e.toString());
+        }
+
+        createTemperatureChannels(thingBuilder, Objects.requireNonNull(res), channelTypes, "api/printer/tool");
+
+        // add bed temperature channel
+        channelTypes = Map.ofEntries(channelEntry("Actual", "PrinterBedTemp", "Actual temperature of the printer bed"),
+                channelEntry("Target", "PrinterBedTemp", "Target temperature of the printer bed"),
+                channelEntry("Offset", "PrinterBedTemp", "Temperature offset of the printer tool"));
+
+        try {
+            res = httpRequestService.getRequest("api/printer/bed");
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            logger.error("Error: {}", e.toString());
+        }
+        createTemperatureChannels(thingBuilder, Objects.requireNonNull(res), channelTypes, "api/printer/bed");
+
+        // add chamber temperature channel
+        channelTypes = Map.ofEntries(
+                channelEntry("Actual", "PrinterChamberTemp", "Actual temperature of the printer chamber"),
+                channelEntry("Target", "PrinterChamberTemp", "Target temperature of the printer chamber"),
+                channelEntry("Offset", "PrinterChamberTemp", "Temperature offset of the printer chamber"));
+
+        try {
+            res = httpRequestService.getRequest("api/printer/chamber");
+        } catch (ExecutionException | InterruptedException | TimeoutException e) {
+            logger.error("Error: {}", e.toString());
+        }
+        createTemperatureChannels(thingBuilder, Objects.requireNonNull(res), channelTypes, "api/printer/chamber");
+    }
+
+    /**
+     * Creates the needed temperature Channels as determined by the {@link ContentResponse} of the
+     * HTTP-Request that requested the needed information.
+     * 
+     * @param thingBuilder the {@link ThingBuilder} the channels are added to
+     * @param res the {@link ContentResponse} that contains the needed information
+     * @param channelTypes a map of channel types for the channels to be created
+     * @param route the route the channels status information is to be requested from
+     */
+    protected void createTemperatureChannels(ThingBuilder thingBuilder, ContentResponse res,
+            Map<String, ChannelType> channelTypes, String route) {
+        if (res.getStatus() == 200) {
+            JsonObject json = JsonParser.parseString(res.getContentAsString()).getAsJsonObject();
+            json.asMap().forEach((jsonKey, jsonValue) -> {
+                logger.debug("jsonKey: {}", jsonKey);
+                JsonObject temps = jsonValue.getAsJsonObject();
+                logger.debug("temps: {}", temps);
+
+                temps.keySet().forEach(key -> {
+                    String channelID = String.format("%1$s_temp_%2$s", key, jsonKey);
+                    ChannelUID channelUID = new ChannelUID(thing.getUID(), channelID);
+                    Map<String, String> properties = new HashMap<>();
+                    properties.put("tool_name", jsonKey);
+                    String jsonKeys = String.format("%1$s,%2$s", jsonKey, key);
+                    properties.put("poll", jsonKeys);
+                    properties.put("route", route);
+
+                    ChannelType channelType = channelTypes.get(key);
+                    ChannelBuilder channelBuilder = ChannelBuilder.create(channelUID).withType(channelType.getUID())
+                            .withProperties(properties).withAcceptedItemType(channelType.getItemType());
+
+                    Channel channel = channelBuilder.build();
+                    if (thing.getChannel(channelUID) == null) {
+                        thingBuilder.withChannel(channel);
+                    } else {
+                        logger.warn("Can not add channel {}, it alredy exists.", channelUID.getId());
+                    }
+                });
+            });
+        } else {
+            logger.error("Error in response: {}: {}", res.getStatus(), res.getContentAsString());
+        }
     }
 
     @Override
@@ -291,14 +444,6 @@ public class OctoPrintHandler extends BaseThingHandler {
         // ToDo: Error Handling for everything
         config = getConfigAs(OctoPrintConfiguration.class);
         assert config != null;
-
-        octopiServer = new OctopiServer(config.ip, config.apiKey, config.username);
-        logger.warn("Created {}", octopiServer);
-        pollRequestService = new PollRequestService(octopiServer, this);
-        pollRequestService.addPollRequest(SERVER_VERSION, "api/server", "version", new StringType());
-        pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval, TimeUnit.SECONDS);
-
-        httpRequestService = new HttpRequestService(octopiServer);
 
         // TODO: Initialize the handler.
         // The framework requires you to return from this method quickly, i.e. any network access must be done in
@@ -316,13 +461,22 @@ public class OctoPrintHandler extends BaseThingHandler {
 
         // Example for background initialization:
         scheduler.execute(() -> {
-            boolean thingReachable = true; // <background task with long running initialization here>
-            // when done do:
-            if (thingReachable) {
-                updateStatus(ThingStatus.ONLINE);
-            } else {
-                updateStatus(ThingStatus.OFFLINE);
-            }
+            boolean thingReachable = true;
+            octoprintServer = new OctoprintServer(config.ip, config.apiKey, config.username);
+            httpRequestService = new HttpRequestService(octoprintServer);
+            logger.debug("Created {}", octoprintServer);
+
+            ThingBuilder thingBuilder = editThing();
+            addTemperatureChannels(thingBuilder);
+            updateThing(thingBuilder.build());
+
+            pollRequestService = new PollRequestService(octoprintServer, this);
+            this.getThing().getChannels().stream()
+                    .filter(c -> c.getProperties().containsKey("poll") && c.getProperties().containsKey("route"))
+                    .forEach(c -> pollRequestService.addPollRequest(c));
+            pollingJob = scheduler.scheduleWithFixedDelay(this::pollingCode, 0, config.refreshInterval,
+                    TimeUnit.SECONDS);
+            updateStatus(ThingStatus.ONLINE);
         });
 
         // These logging types should be primarily used by bindings
