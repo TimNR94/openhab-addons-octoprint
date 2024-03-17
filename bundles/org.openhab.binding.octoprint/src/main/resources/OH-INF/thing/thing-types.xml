@@ -95,35 +95,36 @@
 				<context>ip-address</context>
 				<label>IP</label>
 				<description>IP address of the device</description>
-				<default>127.0.0.1:5000</default>
 			</parameter>
-			<parameter name="password" type="text" required="true">
+			<parameter name="password" type="text" required="false">
 				<context>password</context>
 				<label>Password</label>
 				<description>Password to access the device</description>
 				<default>password</default>
 			</parameter>
-			<parameter name="apiKey" type="text" required="false">
+			<parameter name="apiKey" type="text" required="true">
 				<context>api-key</context>
 				<label>Api Key</label>
 				<description>Api key to access the device</description>
-				<default>AF18F042DC5F4272A3474B0D46D8852F</default>
 			</parameter>
 			<parameter name="serialPort" type="text" required="false">
 				<context>serial port</context>
 				<label>Serial Port</label>
 				<description>The printer's serial port</description>
+				<advanced>true</advanced>
 			</parameter>
 			<parameter name="baudRate" type="integer" required="false">
 				<context>baud rate</context>
 				<label>Baud Rate</label>
 				<description>The printer's baud rate</description>
 				<default>115200</default>
+				<advanced>true</advanced>
 			</parameter>
 			<parameter name="printerProfile" type="text" required="false">
 				<context>printer profile</context>
 				<label>Printer Profile</label>
 				<description>The printer's profile</description>
+				<advanced>true</advanced>
 			</parameter>
 			<parameter name="refreshInterval" type="integer" unit="s" min="1">
 				<label>Refresh Interval</label>
