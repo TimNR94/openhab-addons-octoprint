@@ -7,7 +7,7 @@ All in all it provides access to OctoPrint's functionalities via the openHAB sys
 ## Supported Things
 
 The binding is tested with OctoPi, a Raspberry Pi distribution of OctoPrint, installed as operating system on a Raspberry Pi 3B.
-As 3D printer, a ___________ was used, to test the implementation.
+As 3D printer, a Printrbot Simple was used, to test the implementation.
 Further testing with other versions of OctoPrint or different printers have not been made.
 
 
